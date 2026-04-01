@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algora — Citizen Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,300&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#dc2626;--red-dim:rgba(220,38,38,0.12);--red-border:rgba(220,38,38,0.22);
+  --green:#4ade80;--gold:#fbbf24;--blue:#60a5fa;
+  --bg:#000;--nav-h:72px;--grid-color:rgba(200,30,30,0.10);--grid-size:44px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:#fff;font-family:'Lato',sans-serif;overflow-x:hidden;min-height:100vh;}
+
+/* GLOBAL GRID */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(var(--grid-color) 1px,transparent 1px),linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);
+  background-size:var(--grid-size) var(--grid-size);}
+
+/* SCAN LINE */
+#scan-line{position:fixed;left:0;right:0;height:2px;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,rgba(220,38,38,0.18) 20%,rgba(220,38,38,0.32) 50%,rgba(220,38,38,0.18) 80%,transparent 100%);
+  animation:scan 4s linear infinite;}
+@keyframes scan{0%{top:0;opacity:0;}3%{opacity:1;}97%{opacity:1;}100%{top:100vh;opacity:0;}}
+@keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ══════════ NAV ══════════ */
+nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);display:flex;align-items:center;
+  justify-content:space-between;padding:0 40px;z-index:1000;
+  background:rgba(0,0,0,0.48);backdrop-filter:blur(28px) saturate(160%);
+  -webkit-backdrop-filter:blur(28px) saturate(160%);
+  border-bottom:1px solid rgba(220,38,38,0.18);
+  box-shadow:0 1px 0 rgba(255,255,255,0.04),0 4px 32px rgba(0,0,0,0.45);}
+
+.nav-brand{display:flex;align-items:center;gap:12px;position:relative;}
+.nav-logo-mark{width:36px;height:36px;border-radius:10px;background:var(--red);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  cursor:pointer;box-shadow:0 0 18px rgba(220,38,38,0.4);transition:box-shadow 0.2s;}
+.nav-logo-mark:hover{box-shadow:0 0 28px rgba(220,38,38,0.65);}
+.nav-logo-mark svg{width:16px;height:16px;}
+.nav-wordmark{font-family:'Syncopate',sans-serif;font-size:15px;font-weight:700;
+  letter-spacing:0.18em;text-transform:uppercase;color:#fff;cursor:pointer;}
+
+/* brand dropdown */
+.brand-dd{position:absolute;top:calc(100% + 12px);left:0;width:228px;
+  background:rgba(6,0,0,0.72);backdrop-filter:blur(44px) saturate(180%);
+  -webkit-backdrop-filter:blur(44px) saturate(180%);
+  border:1px solid rgba(220,38,38,0.22);border-radius:14px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,0.75),inset 0 1px 0 rgba(255,255,255,0.05);
+  opacity:0;pointer-events:none;transform:translateY(-8px);
+  transition:opacity 0.22s,transform 0.22s;z-index:200;}
+.brand-dd::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(200,30,30,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.07) 1px,transparent 1px);
+  background-size:44px 44px;}
+.brand-dd.open{opacity:1;pointer-events:all;transform:translateY(0);}
+.bdd-item{display:flex;align-items:center;gap:11px;padding:13px 18px;cursor:pointer;
+  font-size:14px;font-weight:500;letter-spacing:0.03em;color:rgba(255,255,255,0.82);
+  transition:background 0.15s,color 0.15s;position:relative;z-index:1;}
+.bdd-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.bdd-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0;}
+.bdd-sep{height:1px;background:rgba(255,255,255,0.07);margin:4px 0;position:relative;z-index:1;}
+.bdd-item.danger{color:rgba(255,100,100,0.85);}
+.bdd-item.danger:hover{background:rgba(220,38,38,0.1);color:var(--red);}
+
+/* citizen portal pill — green tint */
+.nav-center{position:absolute;left:50%;transform:translateX(-50%);}
+.nav-portal-pill{display:flex;align-items:center;gap:8px;
+  background:rgba(74,222,128,0.09);border:1.5px solid rgba(74,222,128,0.28);
+  border-radius:4px;padding:7px 18px;
+  font-family:'Courier New',Courier,monospace;font-size:11px;font-weight:700;
+  letter-spacing:0.2em;text-transform:uppercase;color:rgba(74,222,128,0.85);}
+.portal-dot{width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px rgba(74,222,128,0.9);animation:lp 1.4s ease-in-out infinite;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+
+/* ══════════ GLASS PLATE SYSTEM ══════════ */
+.plate-back{position:fixed;inset:0;z-index:8500;pointer-events:none;opacity:0;transition:opacity 0.3s ease;}
+.plate-back.open{opacity:1;pointer-events:all;}
+.plate-dim{position:absolute;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.plate{position:absolute;top:50%;left:50%;width:min(480px,94vw);
+  background:rgba(6,0,0,0.62);backdrop-filter:blur(50px) saturate(200%);
+  -webkit-backdrop-filter:blur(50px) saturate(200%);
+  border:1px solid rgba(220,38,38,0.25);border-radius:20px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity:0;transform:translate(-50%,-50%) scale(0.96);
+  transition:opacity 0.3s ease,transform 0.32s cubic-bezier(0.16,1,0.3,1);}
+.plate-back.open .plate{opacity:1;transform:translate(-50%,-50%) scale(1);}
+.plate::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(200,30,30,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.07) 1px,transparent 1px);
+  background-size:44px 44px;}
+.ph{padding:24px 28px 18px;border-bottom:1px solid rgba(220,38,38,0.15);
+  display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;}
+.ph-eyebrow{font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(220,38,38,0.85);font-weight:700;margin-bottom:5px;}
+.ph-title{font-family:'Syncopate',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
+.ph-close{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);font-size:14px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.18s;}
+.ph-close:hover{background:rgba(220,38,38,0.2);border-color:rgba(220,38,38,0.5);color:#fff;}
+.pb{padding:22px 28px 26px;position:relative;z-index:1;}
+.pf{margin-bottom:16px;}
+.pf-lbl{display:block;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;
+  color:rgba(255,255,255,0.55);font-weight:700;margin-bottom:7px;}
+.pf-inp{width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.13);border-radius:9px;color:#fff;
+  font-size:14px;font-family:'Lato',sans-serif;font-weight:400;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;}
+.pf-inp::placeholder{color:rgba(255,255,255,0.32);}
+.pf-inp:focus{border-color:rgba(220,38,38,0.55);box-shadow:0 0 0 3px rgba(220,38,38,0.08);}
+.pf-inp[readonly]{opacity:0.5;cursor:not-allowed;}
+.pf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pf-btn{width:100%;padding:14px;background:var(--red);border:none;border-radius:9px;
+  color:#fff;font-family:'Lato',sans-serif;font-weight:900;font-size:12px;
+  letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;margin-top:6px;
+  box-shadow:0 0 22px rgba(220,38,38,0.3);transition:background 0.2s,box-shadow 0.2s;}
+.pf-btn:hover{background:#b91c1c;box-shadow:0 0 36px rgba(220,38,38,0.55);}
+.sd-item{display:flex;align-items:center;gap:14px;padding:15px 16px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;margin-bottom:9px;cursor:pointer;transition:background 0.15s,border-color 0.15s;}
+.sd-item:hover{background:rgba(255,255,255,0.06);border-color:rgba(220,38,38,0.25);}
+.sd-ico{font-size:22px;width:26px;text-align:center;flex-shrink:0;}
+.sd-name{font-size:14px;font-weight:700;margin-bottom:4px;}
+.sd-desc{font-size:12px;color:rgba(255,255,255,0.5);font-weight:300;}
+.lo-warn{background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);
+  border-radius:10px;padding:15px 16px;margin-bottom:18px;
+  font-size:13px;color:rgba(220,130,130,0.9);font-weight:300;line-height:1.7;}
+.lo-btns{display:flex;gap:10px;}
+.lo-cancel{flex:1;padding:13px;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:rgba(255,255,255,0.7);
+  font-family:'Lato',sans-serif;font-weight:700;font-size:12px;
+  letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all 0.18s;}
+.lo-cancel:hover{background:rgba(255,255,255,0.09);color:#fff;}
+.lo-out{flex:1;padding:13px;background:var(--red);border:none;border-radius:9px;
+  color:#fff;font-family:'Lato',sans-serif;font-weight:900;font-size:12px;
+  letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 0 18px rgba(220,38,38,0.3);transition:background 0.2s;}
+.lo-out:hover{background:#b91c1c;}
+
+/* ══════════ HERO (MAP + WELCOME) ══════════ */
+.hero{
+  padding-top:var(--nav-h);
+  height:100vh;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  position:relative;
+  overflow:hidden;
+  z-index:1;
+}
+
+/* LEFT — India map iframe */
+.hero-map-side{
+  position:relative;
+  overflow:hidden;
+}
+/* the map iframe sits flush */
+.hero-map-side iframe{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border:none;
+  background:transparent;
+}
+/* subtle right-side vignette so map fades into the content */
+.hero-map-side::after{
+  content:'';
+  position:absolute;
+  top:0;right:0;bottom:0;
+  width:120px;
+  background:linear-gradient(to right,transparent,rgba(0,0,0,0.85));
+  pointer-events:none;
+  z-index:2;
+}
+
+/* RIGHT — welcome content */
+.hero-content-side{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:0 56px 0 40px;
+  position:relative;
+  z-index:2;
+}
+
+/* live badge */
+.hero-live-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  background:rgba(220,38,38,0.1);border:1.5px solid rgba(220,38,38,0.55);
+  border-radius:4px;padding:8px 18px;margin-bottom:20px;
+  align-self:flex-start;
+  font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;
+  letter-spacing:0.2em;text-transform:uppercase;color:rgba(220,38,38,1);
+  box-shadow:0 0 18px rgba(220,38,38,0.12);
+  animation:fadeIn 0.6s 0.2s both;
+}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 6px rgba(220,38,38,0.9);animation:lp 1.4s ease-in-out infinite;flex-shrink:0;}
+
+/* greeting */
+.hero-greeting{
+  font-family:'Lato',sans-serif;font-size:15px;font-weight:400;
+  letter-spacing:0.2em;text-transform:uppercase;
+  color:rgba(255,255,255,0.58);margin-bottom:10px;
+  animation:fadeUp 0.6s 0.35s both;
+}
+
+/* name */
+.hero-name{
+  font-family:'Syncopate',sans-serif;
+  font-size:clamp(28px,4.5vw,62px);font-weight:700;
+  letter-spacing:0.04em;line-height:1.08;text-transform:uppercase;
+  color:#fff;margin-bottom:14px;
+  animation:fadeUp 0.6s 0.45s both;
+}
+.hero-name .name-accent{color:var(--red);}
+
+/* tagline */
+.hero-tagline{
+  font-size:16px;font-weight:300;color:rgba(255,255,255,0.62);
+  letter-spacing:0.04em;line-height:1.8;max-width:380px;
+  margin-bottom:36px;
+  min-height:2.8em;
+}
+.tagline-cursor{
+  display:inline-block;width:2px;height:1em;
+  background:var(--red);margin-left:2px;
+  vertical-align:text-bottom;
+  box-shadow:0 0 8px rgba(220,38,38,0.9);
+  animation:cursorBlink 0.75s step-end infinite;
+}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* stat pills row */
+.hero-stats{
+  display:flex;flex-wrap:wrap;gap:10px;margin-bottom:36px;
+  animation:fadeUp 0.6s 0.65s both;
+}
+.hero-stat{
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.09);border-radius:10px;
+  padding:14px 18px;min-width:130px;
+  transition:border-color 0.2s,transform 0.2s;
+}
+.hero-stat:hover{border-color:rgba(220,38,38,0.3);transform:translateY(-2px);}
+.hero-stat-val{
+  font-family:'Syncopate',sans-serif;font-size:18px;font-weight:700;
+  color:var(--red);letter-spacing:-0.02em;margin-bottom:6px;
+}
+.hero-stat-lbl{
+  font-size:12px;font-weight:400;letter-spacing:0.14em;text-transform:uppercase;
+  color:rgba(255,255,255,0.52);
+}
+
+/* scroll hint */
+.hero-scroll{
+  display:flex;align-items:center;gap:10px;
+  font-size:12px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;
+  color:rgba(255,255,255,0.35);
+  animation:fadeUp 0.6s 0.8s both;
+}
+.hero-scroll-line{width:30px;height:1px;background:rgba(220,38,38,0.4);}
+
+/* city info tooltip that appears when hovering map */
+.city-tooltip{
+  position:absolute;bottom:40px;left:40px;
+  background:rgba(6,0,0,0.62);backdrop-filter:blur(32px) saturate(200%);
+  -webkit-backdrop-filter:blur(32px) saturate(200%);
+  border:1px solid rgba(220,38,38,0.25);border-radius:12px;
+  padding:16px 20px;min-width:200px;
+  box-shadow:0 16px 50px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05);
+  opacity:0;transform:translateY(8px);
+  transition:opacity 0.22s,transform 0.22s;
+  pointer-events:none;z-index:10;
+}
+.city-tooltip.visible{opacity:1;transform:translateY(0);}
+.city-tooltip::before{content:'';position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  background-image:linear-gradient(rgba(200,30,30,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.07) 1px,transparent 1px);
+  background-size:44px 44px;}
+.ctt-city{font-family:'Syncopate',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;position:relative;z-index:1;}
+.ctt-state{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+  color:rgba(220,38,38,0.8);font-weight:700;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.07);position:relative;z-index:1;}
+.ctt-row{display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:8px;position:relative;z-index:1;}
+.ctt-lbl{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);font-weight:400;}
+.ctt-val{font-size:13px;color:rgba(255,255,255,0.9);font-weight:700;}
+
+/* BIG TX POPUP */
+#btp{position:fixed;bottom:28px;right:28px;width:310px;
+  background:rgba(8,0,0,0.78);backdrop-filter:blur(36px) saturate(160%);
+  -webkit-backdrop-filter:blur(36px) saturate(160%);
+  border:1px solid rgba(220,38,38,0.6);border-radius:14px;padding:18px 20px;
+  z-index:7000;pointer-events:none;transform:translateX(360px);opacity:0;
+  transition:transform 0.46s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease;
+  box-shadow:0 16px 60px rgba(220,38,38,0.22),inset 0 1px 0 rgba(255,255,255,0.05);}
+#btp::before{content:'';position:absolute;inset:0;border-radius:14px;pointer-events:none;
+  background-image:linear-gradient(rgba(200,30,30,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.1) 1px,transparent 1px);
+  background-size:44px 44px;}
+#btp.show{transform:translateX(0);opacity:1;pointer-events:all;}
+.btp-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(220,38,38,0.18);
+  border:1px solid rgba(220,38,38,0.38);border-radius:4px;padding:3px 10px;margin-bottom:10px;
+  font-size:10px;font-weight:700;color:var(--red);letter-spacing:0.22em;text-transform:uppercase;}
+.btp-dot{width:5px;height:5px;background:var(--red);border-radius:50%;animation:lp 1s infinite;}
+.btp-amt{font-family:'Syncopate',sans-serif;font-size:22px;font-weight:700;color:var(--red);margin-bottom:4px;}
+.btp-desc{font-size:13px;font-weight:300;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:8px;}
+.btp-hash{font-family:'Courier New',Courier,monospace;font-size:10px;color:rgba(255,255,255,0.32);}
+.btp-x{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:5px;
+  background:rgba(220,38,38,0.18);border:1px solid rgba(220,38,38,0.3);color:var(--red);
+  font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;}
+
+/* TOAST */
+#algora-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:rgba(0,0,0,0.88);border:1px solid rgba(74,222,128,0.35);border-radius:8px;
+  padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:0.1em;color:var(--green);
+  z-index:9998;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);white-space:nowrap;
+  backdrop-filter:blur(20px);}
+#algora-toast.show{transform:translateX(-50%) translateY(0);}
+
+/* FOOTER */
+footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;
+  border-top:1px solid rgba(220,38,38,0.2);background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);}
+.fw{font-family:'Syncopate',sans-serif;font-size:clamp(48px,10vw,130px);font-weight:700;
+  letter-spacing:0.06em;line-height:1;user-select:none;display:inline-flex;align-items:baseline;}
+.fw .al{color:rgba(255,255,255,0.42);}
+.fw .ra{color:rgba(255,255,255,0.55);position:relative;top:-0.2em;font-size:0.76em;}
+.fn{font-size:12px;letter-spacing:0.18em;text-transform:uppercase;
+  color:rgba(255,255,255,0.4);font-weight:300;margin-top:20px;}
+
+/* PAGE DIM */
+#page-dim{position:fixed;inset:0;z-index:7999;background:transparent;
+  pointer-events:none;transition:background 0.35s ease;}
+#page-dim.active{background:rgba(0,0,0,0.55);}
+
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;}
+  .hero-map-side{display:none;}
+  .hero-content-side{padding:40px 24px;justify-content:flex-start;padding-top:40px;}
+  nav{padding:0 20px;}
+  .nav-center{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="scan-line"></div>
+<div id="page-dim"></div>
+<div id="algora-toast"></div>
+
+<!-- ═══════════ PLATES ═══════════ -->
+<div class="plate-back" id="pl-profile">
+  <div class="plate-dim" onclick="closePlate('pl-profile')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Account</div><div class="ph-title">Profile Settings</div></div><div class="ph-close" onclick="closePlate('pl-profile')">✕</div></div>
+    <div class="pb">
+      <div class="pf-row">
+        <div class="pf"><label class="pf-lbl">Full Name</label><input class="pf-inp" id="pf-name" type="text" placeholder="Your name"></div>
+        <div class="pf"><label class="pf-lbl">Citizen ID</label><input class="pf-inp" id="pf-cid" type="text" readonly></div>
+      </div>
+      <div class="pf"><label class="pf-lbl">State</label><input class="pf-inp" id="pf-state" type="text" placeholder="e.g. Uttar Pradesh"></div>
+      <div class="pf"><label class="pf-lbl">City</label><input class="pf-inp" id="pf-city" type="text" placeholder="e.g. Lucknow"></div>
+      <div class="pf"><label class="pf-lbl">Email</label><input class="pf-inp" id="pf-email" type="email" placeholder="you@gmail.com"></div>
+      <button class="pf-btn" onclick="saveProfile()">Save Changes →</button>
+    </div>
+  </div>
+</div>
+
+<div class="plate-back" id="pl-service">
+  <div class="plate-dim" onclick="closePlate('pl-service')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Support</div><div class="ph-title">Service Desk</div></div><div class="ph-close" onclick="closePlate('pl-service')">✕</div></div>
+    <div class="pb">
+      <div class="sd-item" onclick="showToast('Opening documentation...')"><div class="sd-ico">📖</div><div><div class="sd-name">How Algora Works</div><div class="sd-desc">Understand blockchain-based transparency</div></div></div>
+      <div class="sd-item" onclick="showToast('Connecting to live support...')"><div class="sd-ico">💬</div><div><div class="sd-name">Live Chat</div><div class="sd-desc">Talk to an Algora support agent</div></div></div>
+      <div class="sd-item" onclick="showToast('Opening ticket portal...')"><div class="sd-ico">🎫</div><div><div class="sd-name">Raise a Concern</div><div class="sd-desc">Report suspicious transactions</div></div></div>
+      <div class="sd-item" onclick="showToast('Opening Algorand explorer...')"><div class="sd-ico">🔗</div><div><div class="sd-name">Blockchain Explorer</div><div class="sd-desc">Verify any transaction on Algorand</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="plate-back" id="pl-logout">
+  <div class="plate-dim" onclick="closePlate('pl-logout')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Session</div><div class="ph-title">Log Out</div></div><div class="ph-close" onclick="closePlate('pl-logout')">✕</div></div>
+    <div class="pb">
+      <div class="lo-warn">⚠ You will be returned to the public ledger view. Your reading preferences and alerts will be saved.</div>
+      <div class="lo-btns"><button class="lo-cancel" onclick="closePlate('pl-logout')">Cancel</button><button class="lo-out" onclick="doLogout()">Log Out →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ NAV ═══════════ -->
+<nav>
+  <div class="nav-brand" id="nav-brand">
+    <div class="nav-logo-mark" onclick="toggleDD()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 21.5 7 21.5 17 12 22 2.5 17 2.5 7"/>
+      </svg>
+    </div>
+    <span class="nav-wordmark" onclick="window.location='/'">Algora</span>
+    <div class="brand-dd" id="brand-dd">
+      <div class="bdd-item" onclick="openPlate('pl-profile')"><span class="bdd-icon">⚙️</span>Profile Settings</div>
+      <div class="bdd-item" onclick="openPlate('pl-service')"><span class="bdd-icon">🎧</span>Service Desk</div>
+      <div class="bdd-sep"></div>
+      <div class="bdd-item danger" onclick="openPlate('pl-logout')"><span class="bdd-icon">🚪</span>Log Out</div>
+    </div>
+  </div>
+
+  <div class="nav-center">
+    <div class="nav-portal-pill"><div class="portal-dot"></div>Citizen Portal</div>
+  </div>
+
+  <!-- citizens have no wallet or propose buttons -->
+  <div class="nav-right"></div>
+</nav>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero">
+
+  <!-- LEFT: India map as iframe -->
+  <div class="hero-map-side" id="map-side">
+    <!--
+      TEAMMATE: swap this iframe src to your own map file.
+      The map file receives window.onCityHover(node) and window.onCityClick(node) callbacks.
+    -->
+    <iframe
+      id="india-map-frame"
+      src="india.html"
+      scrolling="no"
+      title="India city network"
+      allowtransparency="true">
+    </iframe>
+
+    <!-- city tooltip — populated by map hover callback -->
+    <div class="city-tooltip" id="city-tt">
+      <div class="ctt-city" id="ctt-city">—</div>
+      <div class="ctt-state" id="ctt-state">—</div>
+      <div class="ctt-row"><span class="ctt-lbl">Population</span><span class="ctt-val" id="ctt-pop">—</span></div>
+      <div class="ctt-row"><span class="ctt-lbl">State GDP</span><span class="ctt-val" id="ctt-gdp">—</span></div>
+      <div class="ctt-row"><span class="ctt-lbl">Literacy</span><span class="ctt-val" id="ctt-lit">—</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Welcome content -->
+  <div class="hero-content-side">
+
+    <div class="hero-live-badge">
+      <div class="live-dot"></div>
+      Live on Algorand Blockchain
+    </div>
+
+    <div class="hero-greeting">Welcome back</div>
+    <div class="hero-name" id="hero-name">
+      <span class="name-accent" id="name-first">Priya</span><br>
+      <span id="name-last">Sharma</span>
+    </div>
+
+    <div class="hero-tagline" id="hero-tagline"><span id="tagline-text"></span><span class="tagline-cursor" id="tagline-cursor"></span></div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val">₹48.2L CR</div>
+        <div class="hero-stat-lbl">Budget Tracked</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val" id="hs-txn">2,41,893</div>
+        <div class="hero-stat-lbl">On-Chain Txns</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">1,204</div>
+        <div class="hero-stat-lbl">Active Officials</div>
+      </div>
+    </div>
+
+    <div class="hero-scroll">
+      <div class="hero-scroll-line"></div>
+      Powered by Algorand Blockchain
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="fw"><span class="al">Algo</span><span class="ra">ra</span></div>
+  <p class="fn">© 2025 Algora Protocol. All rights reserved.</p>
+</footer>
+
+<!-- big tx popup -->
+<div id="btp">
+  <div class="btp-x" onclick="closeBtp()">✕</div>
+  <div class="btp-tag"><div class="btp-dot"></div>Large Transfer Alert</div>
+  <div class="btp-amt" id="btp-amt">—</div>
+  <div class="btp-desc" id="btp-desc">—</div>
+  <div class="btp-hash" id="btp-hash">—</div>
+</div>
+
+<script>
+
+
+// ══════════════════════════════════════════
+//  RENDER IDENTITY
+// ══════════════════════════════════════════
+function renderIdentity(){
+  const u=window.currentUser;
+  document.getElementById('pf-name').value=u.name;
+  document.getElementById('pf-cid').value = window.currentUser.govId;
+  document.getElementById('pf-email').value=u.email||'';
+  document.getElementById('pf-state').value=u.state||'';
+  document.getElementById('pf-city').value=u.city||'';
+  // name split
+  const parts=u.name.trim().split(' ');
+  const last=parts.length>1?parts.slice(1).join(' '):parts[0];
+  document.getElementById('name-first').textContent=parts[0];
+  document.getElementById('name-last').textContent=last;
+}
+
+// ══════════════════════════════════════════
+//  MAP CITY HOVER — receives callbacks from india-map.html
+// ══════════════════════════════════════════
+const STATE_DATA_MINI={
+  "Maharashtra":{pop:126.4,gdp:455,literacy:82.9},
+  "Delhi":{pop:32.9,gdp:293,literacy:88.7},
+  "Uttar Pradesh":{pop:241.1,gdp:252,literacy:73.0},
+  "Rajasthan":{pop:81.0,gdp:158,literacy:66.1},
+  "Gujarat":{pop:63.9,gdp:331,literacy:79.3},
+  "Karnataka":{pop:67.6,gdp:280,literacy:77.2},
+  "Tamil Nadu":{pop:77.8,gdp:303,literacy:80.1},
+  "Andhra Pradesh":{pop:53.9,gdp:178,literacy:67.4},
+  "Telangana":{pop:39.4,gdp:198,literacy:72.8},
+  "West Bengal":{pop:99.6,gdp:193,literacy:77.1},
+  "Bihar":{pop:128.5,gdp:104,literacy:63.8},
+  "Madhya Pradesh":{pop:85.6,gdp:158,literacy:70.6},
+  "Punjab":{pop:30.1,gdp:142,literacy:76.7},
+  "Haryana":{pop:28.9,gdp:154,literacy:76.6},
+  "Jharkhand":{pop:38.6,gdp:96,literacy:67.6},
+  "Kerala":{pop:35.7,gdp:212,literacy:94.0},
+  "Odisha":{pop:46.9,gdp:115,literacy:73.5},
+  "Chhattisgarh":{pop:29.4,gdp:106,literacy:71.0},
+};
+
+const tt=document.getElementById('city-tt');
+const ttCity=document.getElementById('ctt-city');
+const ttState=document.getElementById('ctt-state');
+const ttPop=document.getElementById('ctt-pop');
+const ttGdp=document.getElementById('ctt-gdp');
+const ttLit=document.getElementById('ctt-lit');
+let ttHideTimer=null;
+
+// The map iframe calls these on the parent window
+window.onCityHover=function(node){
+  clearTimeout(ttHideTimer);
+  if(!node){ttHideTimer=setTimeout(()=>tt.classList.remove('visible'),300);return;}
+  const sd=STATE_DATA_MINI[node.state]||{};
+  ttCity.textContent=node.name;
+  ttState.textContent=node.state;
+  ttPop.textContent=sd.pop?sd.pop+'M pop.':'—';
+  ttGdp.textContent=sd.gdp?'$'+sd.gdp+'B':'—';
+  ttLit.textContent=sd.literacy?sd.literacy+'%':'—';
+  tt.classList.add('visible');
+};
+
+window.onCityClick=function(node){
+  if(!node) return;
+  showToast('📍 '+node.name+', '+node.state);
+};
+
+// ══════════════════════════════════════════
+//  BRAND DROPDOWN
+// ══════════════════════════════════════════
+function toggleDD(){document.getElementById('brand-dd').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!document.getElementById('nav-brand').contains(e.target))document.getElementById('brand-dd').classList.remove('open');});
+
+// ══════════════════════════════════════════
+//  PLATES
+// ══════════════════════════════════════════
+function openPlate(id){document.getElementById('brand-dd').classList.remove('open');document.getElementById(id).classList.add('open');document.getElementById('page-dim').classList.add('active');}
+function closePlate(id){document.getElementById(id).classList.remove('open');checkDim();}
+function checkDim(){const any=[...document.querySelectorAll('.plate-back.open')].length>0;if(!any)document.getElementById('page-dim').classList.remove('active');}
+function saveProfile(){const n=document.getElementById('pf-name').value.trim();if(n){window.currentUser.name=n;document.getElementById('bdd-name').textContent=n;}closePlate('pl-profile');showToast('✓ Profile updated');}
+function doLogout(){closePlate('pl-logout');showToast('Logging out…');setTimeout(()=>window.location.href='/',1200);}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+window.showToast=function(msg){const t=document.getElementById('algora-toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);};
+
+// ══════════════════════════════════════════
+//  BIG TX POPUP
+// ══════════════════════════════════════════
+const ltx=[];let _bi=0,_bt=null;
+function showBtp(t){document.getElementById('btp-amt').textContent=t.amtS;document.getElementById('btp-desc').innerHTML=t.sL+'<br>'+t.project;document.getElementById('btp-hash').textContent='TX: '+t.hash;document.getElementById('btp').classList.add('show');clearTimeout(_bt);_bt=setTimeout(closeBtp,8000);}
+function closeBtp(){document.getElementById('btp').classList.remove('show');}
+function startBtp(){if(!ltx.length)return;function n(){showBtp(ltx[_bi%ltx.length]);_bi++;setTimeout(n,30000+Math.random()*18000);}setTimeout(n,12000);}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  TAGLINE TYPEWRITER
+// ══════════════════════════════════════════
+function startTaglineTypewriter(){
+  const TEXT="Every rupee of India's public spending - transparent, tamper-proof, yours to verify.";
+  const el=document.getElementById('tagline-text');
+  const cursor=document.getElementById('tagline-cursor');
+  let i=0;
+  // delay start until after name has animated in
+  setTimeout(function type(){
+    el.textContent=TEXT.slice(0,i);
+    i++;
+    if(i<=TEXT.length){
+      // slightly faster in the middle, slower at punctuation
+      const ch=TEXT[i-1];
+      const delay=ch==='.'||ch===','||ch==='-'?120:38;
+      setTimeout(type,delay);
+    } else {
+      // typing done — let cursor keep blinking for 2s then fade it out
+      setTimeout(()=>{
+        cursor.style.transition='opacity 0.6s ease';
+        cursor.style.opacity='0';
+      },2000);
+    }
+  },1100);
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  renderIdentity();
+  startTaglineTypewriter();
+  startBtp();
+});
+</script>
+<script src="../api.js"></script>
+<script src="../session-guard.js"></script>
+</body>
+</html>

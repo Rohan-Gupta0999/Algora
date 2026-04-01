@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algora — Contractor Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,300&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#dc2626;--red-dim:rgba(220,38,38,0.12);--red-border:rgba(220,38,38,0.22);--green:#4ade80;--gold:#fbbf24;--blue:#60a5fa;--bg:#000;--nav-h:72px;--grid-color:rgba(200,30,30,0.10);--grid-size:44px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:#fff;font-family:'Lato',sans-serif;overflow-x:hidden;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--grid-color) 1px,transparent 1px),linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);background-size:var(--grid-size) var(--grid-size);}
+#scan-line{position:fixed;left:0;right:0;height:2px;z-index:2;pointer-events:none;background:linear-gradient(90deg,transparent 0%,rgba(220,38,38,0.18) 20%,rgba(220,38,38,0.32) 50%,rgba(220,38,38,0.18) 80%,transparent 100%);animation:scan 4s linear infinite;}
+@keyframes scan{0%{top:0;opacity:0;}3%{opacity:1;}97%{opacity:1;}100%{top:100vh;opacity:0;}}
+@keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;padding:0 40px;z-index:1000;background:rgba(0,0,0,0.48);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);border-bottom:1px solid rgba(220,38,38,0.18);box-shadow:0 1px 0 rgba(255,255,255,0.04),0 4px 32px rgba(0,0,0,0.45);}
+.nav-brand{display:flex;align-items:center;gap:12px;position:relative;}
+.nav-logo-mark{width:36px;height:36px;border-radius:10px;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;box-shadow:0 0 18px rgba(220,38,38,0.4);transition:box-shadow 0.2s;}
+.nav-logo-mark:hover{box-shadow:0 0 28px rgba(220,38,38,0.65);}
+.nav-logo-mark svg{width:16px;height:16px;}
+.nav-wordmark{font-family:'Syncopate',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#fff;cursor:pointer;}
+.brand-dd{position:absolute;top:calc(100% + 12px);left:0;width:228px;background:rgba(6,0,0,0.72);backdrop-filter:blur(44px) saturate(180%);-webkit-backdrop-filter:blur(44px) saturate(180%);border:1px solid rgba(220,38,38,0.22);border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.75),inset 0 1px 0 rgba(255,255,255,0.05);opacity:0;pointer-events:none;transform:translateY(-8px);transition:opacity 0.22s,transform 0.22s;z-index:200;}
+.brand-dd::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(200,30,30,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.07) 1px,transparent 1px);background-size:44px 44px;}
+.brand-dd.open{opacity:1;pointer-events:all;transform:translateY(0);}
+.bdd-item{display:flex;align-items:center;gap:11px;padding:13px 18px;cursor:pointer;font-size:14px;font-weight:500;letter-spacing:0.03em;color:rgba(255,255,255,0.82);transition:background 0.15s,color 0.15s;position:relative;z-index:1;}
+.bdd-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.bdd-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0;}
+.bdd-sep{height:1px;background:rgba(255,255,255,0.07);margin:4px 0;position:relative;z-index:1;}
+.bdd-item.danger{color:rgba(255,100,100,0.85);}
+.bdd-item.danger:hover{background:rgba(220,38,38,0.1);color:var(--red);}
+.nav-center{position:absolute;left:50%;transform:translateX(-50%);}
+/* contractor portal pill — blue tint */
+.nav-portal-pill{display:flex;align-items:center;gap:8px;background:rgba(96,165,250,0.1);border:1.5px solid rgba(96,165,250,0.35);border-radius:4px;padding:7px 18px;font-family:'Courier New',Courier,monospace;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:rgba(96,165,250,0.9);}
+.portal-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 6px rgba(96,165,250,0.9);animation:lp 1.4s ease-in-out infinite;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-icon-btn{position:relative;width:40px;height:40px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.55);transition:all 0.2s;}
+.nav-icon-btn:hover{background:var(--red-dim);border-color:var(--red-border);color:#fff;}
+.nav-icon-btn .tip{position:absolute;bottom:-34px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5);white-space:nowrap;opacity:0;transition:opacity 0.15s;pointer-events:none;}
+.nav-icon-btn:hover .tip{opacity:1;}
+.nav-badge{position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--red);border:2px solid #000;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;color:#fff;}
+
+/* ── GLASS PLATE SYSTEM ── */
+.plate-back{position:fixed;inset:0;z-index:8500;pointer-events:none;opacity:0;transition:opacity 0.3s ease;}
+.plate-back.open{opacity:1;pointer-events:all;}
+.plate-dim{position:absolute;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.plate{position:absolute;top:50%;left:50%;width:min(480px,94vw);background:rgba(6,0,0,0.62);backdrop-filter:blur(50px) saturate(200%);-webkit-backdrop-filter:blur(50px) saturate(200%);border:1px solid rgba(220,38,38,0.25);border-radius:20px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.06);opacity:0;transform:translate(-50%,-50%) scale(0.96);transition:opacity 0.3s ease,transform 0.32s cubic-bezier(0.16,1,0.3,1);}
+.plate-back.open .plate{opacity:1;transform:translate(-50%,-50%) scale(1);}
+.plate::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(200,30,30,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.07) 1px,transparent 1px);background-size:44px 44px;}
+.ph{padding:24px 28px 18px;border-bottom:1px solid rgba(220,38,38,0.15);display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;}
+.ph-eyebrow{font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:rgba(220,38,38,0.85);font-weight:700;margin-bottom:5px;}
+.ph-title{font-family:'Syncopate',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
+.ph-close{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.18s;}
+.ph-close:hover{background:rgba(220,38,38,0.2);border-color:rgba(220,38,38,0.5);color:#fff;}
+.pb{padding:22px 28px 26px;position:relative;z-index:1;}
+.pf{margin-bottom:16px;}
+.pf-lbl{display:block;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);font-weight:700;margin-bottom:7px;}
+.pf-inp{width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.13);border-radius:9px;color:#fff;font-size:14px;font-family:'Lato',sans-serif;font-weight:400;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+.pf-inp::placeholder{color:rgba(255,255,255,0.32);}
+.pf-inp:focus{border-color:rgba(220,38,38,0.55);box-shadow:0 0 0 3px rgba(220,38,38,0.08);}
+.pf-inp[readonly]{opacity:0.5;cursor:not-allowed;}
+.pf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pf-btn{width:100%;padding:14px;background:var(--red);border:none;border-radius:9px;color:#fff;font-family:'Lato',sans-serif;font-weight:900;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;margin-top:6px;box-shadow:0 0 22px rgba(220,38,38,0.3);transition:background 0.2s,box-shadow 0.2s;}
+.pf-btn:hover{background:#b91c1c;box-shadow:0 0 36px rgba(220,38,38,0.55);}
+.sd-item{display:flex;align-items:center;gap:14px;padding:15px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:9px;cursor:pointer;transition:background 0.15s,border-color 0.15s;}
+.sd-item:hover{background:rgba(255,255,255,0.06);border-color:rgba(220,38,38,0.25);}
+.sd-ico{font-size:22px;width:26px;text-align:center;flex-shrink:0;}
+.sd-name{font-size:14px;font-weight:700;margin-bottom:4px;}
+.sd-desc{font-size:12px;color:rgba(255,255,255,0.5);font-weight:300;}
+.lo-warn{background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:15px 16px;margin-bottom:18px;font-size:13px;color:rgba(220,130,130,0.9);font-weight:300;line-height:1.7;}
+.lo-btns{display:flex;gap:10px;}
+.lo-cancel{flex:1;padding:13px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:rgba(255,255,255,0.7);font-family:'Lato',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all 0.18s;}
+.lo-cancel:hover{background:rgba(255,255,255,0.09);color:#fff;}
+.lo-out{flex:1;padding:13px;background:var(--red);border:none;border-radius:9px;color:#fff;font-family:'Lato',sans-serif;font-weight:900;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 18px rgba(220,38,38,0.3);transition:background 0.2s;}
+.lo-out:hover{background:#b91c1c;}
+
+/* ── PAGE DIM ── */
+#page-dim{position:fixed;inset:0;z-index:7999;background:transparent;pointer-events:none;transition:background 0.35s ease;}
+#page-dim.active{background:rgba(0,0,0,0.55);}
+.main{padding-top:var(--nav-h);position:relative;z-index:1;}
+
+/* ── IDENTITY ── */
+.identity-section{padding:52px 48px 44px;border-bottom:1px solid rgba(220,38,38,0.14);position:relative;overflow:hidden;}
+.identity-section::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 0% 50%,rgba(96,165,250,0.05) 0%,transparent 60%);}
+.identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start;position:relative;z-index:1;}
+.identity-left{display:flex;flex-direction:column;}
+/* contractor id block — blue tint */
+.cont-id-block{display:inline-flex;align-items:center;gap:14px;background:rgba(96,165,250,0.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(96,165,250,0.28);border-bottom:none;border-radius:10px 10px 0 0;padding:10px 20px;width:100%;}
+.cont-id-prefix{font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(96,165,250,0.55);white-space:nowrap;}
+.cont-id-value{font-family:'Courier New',Courier,monospace;font-size:16px;font-weight:700;letter-spacing:0.22em;color:var(--blue);}
+.cont-id-ok{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:rgba(74,222,128,0.7);}
+.cont-id-ok::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px rgba(74,222,128,0.8);}
+.identity-card{background:rgba(255,255,255,0.04);backdrop-filter:blur(36px) saturate(200%);-webkit-backdrop-filter:blur(36px) saturate(200%);border:1px solid rgba(255,255,255,0.09);border-top:1px solid rgba(96,165,250,0.2);border-radius:0 0 16px 16px;padding:26px 24px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.06);}
+.cont-name{font-family:'Syncopate',sans-serif;font-size:clamp(20px,2.6vw,32px);font-weight:700;letter-spacing:0.04em;line-height:1.15;margin-bottom:5px;text-transform:uppercase;}
+.cont-company{font-family:'Syncopate',sans-serif;font-size:clamp(11px,1.3vw,15px);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;opacity:0.85;}
+.cont-desig{font-size:15px;font-weight:300;color:rgba(255,255,255,0.58);letter-spacing:0.04em;line-height:1.65;margin-bottom:20px;}
+.identity-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.id-tag{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:7px 13px;font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);}
+.id-tag strong{font-weight:700;color:rgba(255,255,255,0.88);font-size:13px;}
+.id-tag.gt{border-color:rgba(74,222,128,0.22);}
+.id-tag.gt strong{color:var(--green);}
+.id-tag.bt{border-color:rgba(96,165,250,0.22);}
+.id-tag.bt strong{color:var(--blue);}
+.wallet-row{background:rgba(255,255,255,0.035);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.wallet-lbl{font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);font-weight:700;margin-bottom:4px;}
+.wallet-addr{font-family:'Courier New',Courier,monospace;font-size:13px;color:var(--blue);word-break:break-all;line-height:1.5;}
+.wallet-ok{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);white-space:nowrap;flex-shrink:0;}
+.wallet-ok::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px rgba(74,222,128,0.8);animation:lp 2s infinite;}
+
+/* ── STATS ── */
+.identity-right{display:flex;flex-direction:column;gap:14px;}
+.stat-card{background:rgba(255,255,255,0.035);backdrop-filter:blur(36px) saturate(200%);-webkit-backdrop-filter:blur(36px) saturate(200%);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px 26px;position:relative;overflow:hidden;transition:border-color 0.25s,transform 0.22s;box-shadow:0 4px 30px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.05);}
+.stat-card:hover{border-color:rgba(220,38,38,0.3);transform:translateY(-2px);}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(220,38,38,0.35),transparent);opacity:0;transition:opacity 0.25s;}
+.stat-card:hover::after{opacity:1;}
+.stat-tag{position:absolute;top:18px;right:18px;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:700;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 9px;}
+.stat-lbl{font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.52);font-weight:400;margin-bottom:10px;}
+.stat-val{font-family:'Syncopate',sans-serif;font-size:clamp(22px,2.6vw,34px);font-weight:700;letter-spacing:-0.02em;color:var(--blue);}
+.stat-val.gn{color:var(--green);}
+.stat-val.gd{color:var(--gold);}
+.stat-sub{font-size:12px;font-weight:300;color:rgba(255,255,255,0.48);letter-spacing:0.04em;margin-top:6px;}
+.prog-wrap{margin-top:10px;}
+.prog-labels{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.42);font-weight:300;margin-bottom:5px;}
+.prog-bar{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--blue),rgba(96,165,250,0.4));}
+
+/* ── TX SECTION ── */
+.tx-section{padding:42px 48px 64px;position:relative;z-index:2;}
+.tx-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;flex-wrap:wrap;gap:14px;}
+.tx-eyebrow{font-size:11px;letter-spacing:0.26em;text-transform:uppercase;color:var(--red);font-weight:700;margin-bottom:8px;opacity:0.9;}
+.tx-title{font-family:'Syncopate',sans-serif;font-size:clamp(18px,2.5vw,28px);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;}
+.chain-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.09);border-radius:4px;padding:8px 16px;font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;letter-spacing:0.1em;color:rgba(255,255,255,0.58);}
+.chain-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px rgba(74,222,128,0.8);animation:lp 2s infinite;}
+/* detoken strip */
+.detoken-strip{background:rgba(96,165,250,0.07);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(96,165,250,0.22);border-radius:10px;padding:15px 22px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;cursor:pointer;transition:background 0.2s;}
+.detoken-strip:hover{background:rgba(96,165,250,0.12);}
+.ds-left{display:flex;align-items:center;gap:14px;}
+.ds-icon{font-size:22px;}
+.ds-title{font-size:14px;font-weight:700;margin-bottom:3px;}
+.ds-sub{font-size:12px;font-weight:300;color:rgba(255,255,255,0.52);}
+.ds-pill{background:rgba(96,165,250,0.2);color:var(--blue);border:1px solid rgba(96,165,250,0.4);border-radius:4px;padding:6px 18px;font-size:13px;font-weight:900;letter-spacing:0.1em;}
+.ds-arrow{color:var(--blue);font-size:22px;}
+.tx-filters{display:flex;gap:7px;margin-bottom:20px;flex-wrap:wrap;}
+.tx-filter{padding:8px 18px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.52);font-family:'Lato',sans-serif;transition:all 0.15s;}
+.tx-filter:hover:not(.active){border-color:rgba(220,38,38,0.3);color:rgba(255,255,255,0.85);}
+.tx-filter.active{background:rgba(220,38,38,0.18);border-color:rgba(220,38,38,0.5);color:var(--red);box-shadow:0 0 12px rgba(220,38,38,0.18);}
+.tx-wrap{background:rgba(0,0,0,0.32);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;box-shadow:0 8px 50px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.05);}
+.tx-head{display:grid;grid-template-columns:0.9fr 2fr 1.2fr 1fr 0.9fr 0.8fr 0.75fr;padding:12px 22px;background:rgba(0,0,0,0.45);border-bottom:1px solid rgba(255,255,255,0.06);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.42);font-weight:700;}
+.tx-row{display:grid;grid-template-columns:0.9fr 2fr 1.2fr 1fr 0.9fr 0.8fr 0.75fr;padding:15px 22px;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center;cursor:pointer;transition:background 0.15s;}
+.tx-row:last-child{border-bottom:none;}
+.tx-row:hover{background:rgba(255,255,255,0.04);}
+.tx-row.ltx{border-left:2px solid var(--red);}
+.tx-row.dtx{border-left:2px solid var(--blue);}
+.tx-hash{font-family:'Courier New',Courier,monospace;font-size:12px;color:var(--red);}
+.tx-proj{font-size:13px;font-weight:700;margin-bottom:3px;}
+.tx-from{font-size:11px;color:rgba(255,255,255,0.48);font-weight:300;}
+.tx-addr{font-family:'Courier New',Courier,monospace;font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;}
+.sec-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:5px;padding:4px 10px;font-size:11px;}
+.tx-amt{font-family:'Syncopate',sans-serif;font-size:14px;font-weight:700;}
+.tx-amt.rcv{color:var(--green);}
+.tx-amt.ltx{color:var(--red);}
+.tx-dt{font-size:12px;color:rgba(255,255,255,0.5);font-weight:300;}
+.dtk-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+.dtk-chip.avail{background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.25);color:var(--blue);}
+.dtk-chip.done{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.22);color:var(--green);}
+.dtk-chip.pend{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.22);color:var(--gold);}
+.st-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
+.st-chip.confirmed{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.22);color:var(--green);}
+.st-chip.pending{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.22);color:var(--gold);}
+
+#algora-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(0,0,0,0.88);border:1px solid rgba(74,222,128,0.35);border-radius:8px;padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:0.1em;color:var(--green);z-index:9998;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);white-space:nowrap;backdrop-filter:blur(20px);}
+#algora-toast.show{transform:translateX(-50%) translateY(0);}
+#btp{position:fixed;bottom:28px;right:28px;width:310px;background:rgba(8,0,0,0.78);backdrop-filter:blur(36px) saturate(160%);-webkit-backdrop-filter:blur(36px) saturate(160%);border:1px solid rgba(220,38,38,0.6);border-radius:14px;padding:18px 20px;z-index:7000;pointer-events:none;transform:translateX(360px);opacity:0;transition:transform 0.46s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease;box-shadow:0 16px 60px rgba(220,38,38,0.22),inset 0 1px 0 rgba(255,255,255,0.05);}
+#btp::before{content:'';position:absolute;inset:0;border-radius:14px;pointer-events:none;background-image:linear-gradient(rgba(200,30,30,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(200,30,30,0.1) 1px,transparent 1px);background-size:44px 44px;}
+#btp.show{transform:translateX(0);opacity:1;pointer-events:all;}
+.btp-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(220,38,38,0.18);border:1px solid rgba(220,38,38,0.38);border-radius:4px;padding:3px 10px;margin-bottom:10px;font-size:10px;font-weight:700;color:var(--red);letter-spacing:0.22em;text-transform:uppercase;}
+.btp-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:lp 1s infinite;}
+.btp-amt{font-family:'Syncopate',sans-serif;font-size:22px;font-weight:700;color:var(--green);margin-bottom:4px;}
+.btp-desc{font-size:13px;font-weight:300;color:rgba(255,255,255,0.62);line-height:1.6;margin-bottom:8px;}
+.btp-hash{font-family:'Courier New',Courier,monospace;font-size:10px;color:rgba(255,255,255,0.32);}
+.btp-x{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:5px;background:rgba(220,38,38,0.18);border:1px solid rgba(220,38,38,0.3);color:var(--red);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;}
+
+footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;border-top:1px solid rgba(220,38,38,0.2);background:rgba(0,0,0,0.5);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);}
+.fw{font-family:'Syncopate',sans-serif;font-size:clamp(48px,10vw,130px);font-weight:700;letter-spacing:0.06em;line-height:1;user-select:none;display:inline-flex;align-items:baseline;}
+.fw .al{color:rgba(255,255,255,0.42);}
+.fw .ra{color:rgba(255,255,255,0.55);position:relative;top:-0.2em;font-size:0.76em;}
+.fn{font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.42);font-weight:300;margin-top:20px;}
+
+@media(max-width:900px){.identity-grid{grid-template-columns:1fr;}nav{padding:0 20px;}.nav-center{display:none;}.identity-section,.tx-section{padding-left:20px;padding-right:20px;}.tx-head,.tx-row{grid-template-columns:0.9fr 1.6fr 1fr 0.9fr 0.75fr;}.tx-head div:nth-child(6),.tx-row div:nth-child(6),.tx-head div:nth-child(7),.tx-row div:nth-child(7){display:none;}}
+</style>
+</head>
+<body>
+<div id="scan-line"></div>
+<div id="page-dim"></div>
+<div id="algora-toast"></div>
+
+<!-- PLATES -->
+<div class="plate-back" id="pl-profile">
+  <div class="plate-dim" onclick="closePlate('pl-profile')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Account</div><div class="ph-title">Profile Settings</div></div><div class="ph-close" onclick="closePlate('pl-profile')">✕</div></div>
+    <div class="pb">
+      <div class="pf-row">
+        <div class="pf"><label class="pf-lbl">Full Name</label><input class="pf-inp" id="pf-name" type="text" placeholder="Your name"></div>
+        <div class="pf"><label class="pf-lbl">Contractor ID</label><input class="pf-inp" id="pf-cid" type="text" readonly></div>
+      </div>
+      <div class="pf"><label class="pf-lbl">Company</label><input class="pf-inp" id="pf-company" type="text" placeholder="e.g. IL&FS Engineering Ltd."></div>
+      <div class="pf"><label class="pf-lbl">Designation</label><input class="pf-inp" id="pf-desig" type="text" placeholder="e.g. Director, Infrastructure Projects"></div>
+      <div class="pf"><label class="pf-lbl">Email</label><input class="pf-inp" id="pf-email" type="email" placeholder="you@company.com"></div>
+      <button class="pf-btn" onclick="saveProfile()">Save Changes →</button>
+    </div>
+  </div>
+</div>
+
+<div class="plate-back" id="pl-service">
+  <div class="plate-dim" onclick="closePlate('pl-service')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Support</div><div class="ph-title">Service Desk</div></div><div class="ph-close" onclick="closePlate('pl-service')">✕</div></div>
+    <div class="pb">
+      <div class="sd-item" onclick="showToast('Opening documentation...')"><div class="sd-ico">📖</div><div><div class="sd-name">Documentation</div><div class="sd-desc">Protocol guides, detokenisation process & FAQs</div></div></div>
+      <div class="sd-item" onclick="showToast('Connecting to live support...')"><div class="sd-ico">💬</div><div><div class="sd-name">Live Chat</div><div class="sd-desc">Talk to an Algora support agent</div></div></div>
+      <div class="sd-item" onclick="showToast('Opening ticket portal...')"><div class="sd-ico">🎫</div><div><div class="sd-name">Raise a Ticket</div><div class="sd-desc">Report issues or query a payment</div></div></div>
+      <div class="sd-item" onclick="showToast('Opening Algorand explorer...')"><div class="sd-ico">🔗</div><div><div class="sd-name">Blockchain Explorer</div><div class="sd-desc">Verify any transaction independently</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="plate-back" id="pl-logout">
+  <div class="plate-dim" onclick="closePlate('pl-logout')"></div>
+  <div class="plate">
+    <div class="ph"><div><div class="ph-eyebrow">Session</div><div class="ph-title">Log Out</div></div><div class="ph-close" onclick="closePlate('pl-logout')">✕</div></div>
+    <div class="pb">
+      <div class="lo-warn">⚠ Your session will be terminated. Any available detokenisation balances remain unaffected.</div>
+      <div class="lo-btns"><button class="lo-cancel" onclick="closePlate('pl-logout')">Cancel</button><button class="lo-out" onclick="doLogout()">Log Out →</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand" id="nav-brand">
+    <div class="nav-logo-mark" onclick="toggleDD()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 21.5 7 21.5 17 12 22 2.5 17 2.5 7"/></svg>
+    </div>
+    <span class="nav-wordmark" onclick="window.location='/'">Algora</span>
+    <span id="bdd-name" style="display:none"></span>
+    <div class="brand-dd" id="brand-dd">
+      <div class="bdd-item" onclick="openPlate('pl-profile')"><span class="bdd-icon">⚙️</span>Profile Settings</div>
+      <div class="bdd-item" onclick="openPlate('pl-service')"><span class="bdd-icon">🎧</span>Service Desk</div>
+      <div class="bdd-sep"></div>
+      <div class="bdd-item danger" onclick="openPlate('pl-logout')"><span class="bdd-icon">🚪</span>Log Out</div>
+    </div>
+  </div>
+  <div class="nav-center"><div class="nav-portal-pill"><div class="portal-dot"></div>Contractor Portal</div></div>
+  <div class="nav-right">
+    <div class="nav-icon-btn" onclick="openPropose()">📤<span class="tip">Propose Tx</span></div>
+    <div class="nav-icon-btn" onclick="openWallet()">💼<span class="tip">Wallet</span></div>
+  </div>
+</nav>
+
+<main class="main">
+  <section class="identity-section">
+    <div class="identity-grid">
+      <div class="identity-left">
+        <div class="cont-id-block">
+          <span class="cont-id-prefix">Contractor&nbsp;ID</span>
+          <span class="cont-id-value" id="cont-id-val">CONT-UP-2021-0047</span>
+          <span class="cont-id-ok">Govt. Affiliated</span>
+        </div>
+        <div class="identity-card">
+          <div class="cont-name" id="cont-name">Arjun Mehta</div>
+          <div class="cont-company" id="cont-company">IL&FS Engineering Ltd.</div>
+          <div class="cont-desig" id="cont-desig">Director, Infrastructure Projects Division<br>Registered · Ministry of Road Transport & Highways</div>
+          <div class="identity-tags">
+            <div class="id-tag bt">Sector &nbsp;<strong>Infrastructure</strong></div>
+            <div class="id-tag">State &nbsp;<strong>Uttar Pradesh</strong></div>
+            <div class="id-tag gt">Status &nbsp;<strong>Active</strong></div>
+            <div class="id-tag">Empanelled &nbsp;<strong>2021</strong></div>
+            <div class="id-tag bt">Projects &nbsp;<strong id="tag-proj">4 Active</strong></div>
+          </div>
+          <div class="wallet-row">
+            <div>
+              <div class="wallet-lbl">Wallet Address</div>
+              <div class="wallet-addr" id="wallet-addr">ALGOP7XILFS3FVKRD2PWNTQYMHZUOE6B4NCJKSDAXP9RQILVWB5TEKCQ7YXI</div>
+            </div>
+            <div class="wallet-ok">Connected</div>
+          </div>
+        </div>
+      </div>
+      <div class="identity-right">
+        <div class="stat-card"><div class="stat-tag">All Time</div><div class="stat-lbl">Total Received</div><div class="stat-val" id="s-rcv">—</div><div class="stat-sub">Across <span id="s-cnt">—</span> confirmed payments</div></div>
+        <div class="stat-card">
+          <div class="stat-tag">FY 2024-25</div><div class="stat-lbl">This Fiscal Year</div><div class="stat-val gn" id="s-fy">—</div>
+          <div class="stat-sub"><span id="s-fyc">—</span> transactions · Apr 2024 – Mar 2025</div>
+          <div class="prog-wrap"><div class="prog-labels"><span>Project completion</span><span id="prog-pct">61%</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:61%;"></div></div></div>
+        </div>
+        <div class="stat-card"><div class="stat-tag">Pending</div><div class="stat-lbl">Awaiting Detokenisation</div><div class="stat-val gd" id="s-dtk">—</div><div class="stat-sub" id="s-dtk-sub">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tx-section">
+    <div class="tx-header">
+      <div><div class="tx-eyebrow">On-Chain Ledger</div><div class="tx-title">Payment History</div></div>
+      <div class="chain-badge"><div class="chain-dot"></div>Algorand Mainnet · Live</div>
+    </div>
+    <div class="detoken-strip" id="dtstrip">
+      <div class="ds-left"><div class="ds-icon">🏦</div><div><div class="ds-title">Detokenisation Available</div><div class="ds-sub">ALGR tokens ready to convert to cash at an affiliated bank</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div class="ds-pill" id="ds-pill">₹320 Cr Ready</div><div class="ds-arrow">→</div></div>
+    </div>
+    <div class="tx-filters">
+      <button class="tx-filter active" onclick="filterTx('all',this)">All</button>
+      <button class="tx-filter" onclick="filterTx('infra',this)">🏗️ Infrastructure</button>
+      <button class="tx-filter" onclick="filterTx('rcv',this)">✅ Received</button>
+      <button class="tx-filter" onclick="filterTx('pending',this)">⏳ Pending</button>
+      <button class="tx-filter" onclick="filterTx('detoken',this)">🏦 Detokenisable</button>
+      <button class="tx-filter" onclick="filterTx('large',this)">🔴 &gt;₹100 Cr</button>
+    </div>
+    <div class="tx-wrap">
+      <div class="tx-head"><div>TX Hash</div><div>Project / From</div><div>Sector</div><div>Amount</div><div>Date</div><div>Detoken</div><div>Status</div></div>
+      <div id="tx-rows"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="fw"><span class="al">Algo</span><span class="ra">ra</span></div>
+  <p class="fn">© 2025 Algora Protocol. All rights reserved.</p>
+</footer>
+
+<div id="btp">
+  <div class="btp-x" onclick="closeBtp()">✕</div>
+  <div class="btp-tag"><div class="btp-dot"></div>Payment Received</div>
+  <div class="btp-amt" id="btp-amt">—</div>
+  <div class="btp-desc" id="btp-desc">—</div>
+  <div class="btp-hash" id="btp-hash">—</div>
+</div>
+
+<script src="assets/propose.js"></script>
+<script src="../session-guard.js"></script>
+<script src="assets/propose.js"></script>
+<script src="assets/wallet_panel.js"></script>
+<script>
+
+const TXD=[
+  {hash:'0x1c8a...6d52',project:'Flyover Construction · Ring Road Node-4',from:'UP PWD (Sh. Rajiv Kumar)',fa:'ALGOP7XNKAG...7X21',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:412,amtS:'₹412 Cr',date:'01 Mar 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x3c1d...9f22',project:'Smart City Road Network Phase-2 · Lucknow',from:'UP PWD (Sh. Rajiv Kumar)',fa:'ALGOP7XNKAG...7X21',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:320,amtS:'₹320 Cr',date:'11 Mar 2025',dtk:'available',status:'confirmed',fy:true},
+  {hash:'0x8a3f...1b99',project:'NH-58 Road Widening Phase 2 · Tranche 1',from:'NHAI Regional Office UP',fa:'ALGOP7XNHAI...3B22',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:180,amtS:'₹180 Cr',date:'25 Feb 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x7a1f...3c29',project:'Urban Road Connectivity Phase-1',from:'LDA Lucknow',fa:'ALGOP7XLDAL...5D33',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:95,amtS:'₹95 Cr',date:'04 Mar 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x5b2e...8d14',project:'Agra-Lucknow Expressway Widening · Tranche 2',from:'UP PWD (Sh. Rajiv Kumar)',fa:'ALGOP7XNKAG...7X21',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:275,amtS:'₹275 Cr',date:'18 Feb 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x9f1a...7c33',project:'Bridge Repair · Gomti River Batch',from:'UP Bridges Corp.',fa:'ALGOP7XUPBC...3A88',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:67,amtS:'₹67 Cr',date:'28 Feb 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x4e8c...2f71',project:'Gorakhpur Link Expressway · Survey & Design',from:'UP Revenue Dept.',fa:'ALGOP7XUPRD...9C44',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:55,amtS:'₹55 Cr',date:'10 Feb 2025',dtk:'done',status:'confirmed',fy:true},
+  {hash:'0x2d8c...4e71',project:'NH Division Survey Works · Lot B',from:'NHAI Regional Office UP',fa:'ALGOP7XNHAI...3B22',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:130,amtS:'₹130 Cr',date:'20 Jan 2025',dtk:'done',status:'confirmed',fy:false},
+  {hash:'0x6b3a...9d11',project:'Purvanchal Expressway Ph-2 Earthworks',from:'UPEIDA Ltd',fa:'ALGOP7XUPEI...8D99',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:245,amtS:'₹245 Cr',date:'05 Jan 2025',dtk:'done',status:'confirmed',fy:false},
+  {hash:'0xc12f...3a88',project:'NH-58 Road Widening Phase 2 · Tranche 2',from:'NHAI Regional Office UP',fa:'ALGOP7XNHAI...3B22',ta:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:660,amtS:'₹660 Cr',date:'13 Mar 2025',dtk:'pending',status:'pending',fy:true},
+];
+window.OFF_TX_HISTORY=TXD.filter(t=>t.status==='confirmed').map(t=>({hash:t.hash,project:t.project,recipient:'→ Your Wallet',amount:t.amtS,date:t.date,time:'',status:'confirmed'}));
+window.PENDING_TXS=[];
+
+function renderIdentity(){
+  const u=window.currentUser;
+  document.getElementById('cont-id-val').textContent = window.currentUser.govId;
+  document.getElementById('wallet-addr').textContent=u.wallet;
+  const bddName = document.getElementById('bdd-name');
+if (bddName) bddName.textContent = window.currentUser.name;
+  document.getElementById('pf-name').value=u.name;
+  document.getElementById('pf-cid').value=u.contractorId;
+  document.getElementById('pf-company').value=u.company||'';
+  document.getElementById('pf-email').value=u.email||'';
+  const conf=TXD.filter(t=>t.status==='confirmed');
+  const fy=TXD.filter(t=>t.fy&&t.status==='confirmed');
+  const dtkAmt=TXD.filter(t=>t.dtk==='available').reduce((s,t)=>s+t.amt,0);
+  const fmt=n=>'₹'+n.toLocaleString('en-IN')+' CR';
+  document.getElementById('s-rcv').textContent=fmt(conf.reduce((s,t)=>s+t.amt,0));
+  document.getElementById('s-fy').textContent=fmt(fy.reduce((s,t)=>s+t.amt,0));
+  document.getElementById('s-dtk').textContent=fmt(dtkAmt);
+  document.getElementById('s-cnt').textContent=conf.length;
+  document.getElementById('s-fyc').textContent=fy.length;
+  document.getElementById('s-dtk-sub').textContent=TXD.filter(t=>t.dtk==='available').length+' payment(s) ready to convert at affiliated bank';
+  document.getElementById('ds-pill').textContent='₹'+dtkAmt.toLocaleString('en-IN')+' Cr Ready';
+  document.getElementById('dtstrip').style.display=dtkAmt>0?'flex':'none';
+  document.getElementById('tag-proj').textContent=TXD.filter(t=>t.status==='pending').length+1+' Active';
+}
+
+let cf='all';
+function filterTx(f,b){cf=f;document.querySelectorAll('.tx-filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTx();}
+function renderTx(){
+  const rows=TXD.filter(t=>{if(cf==='all')return true;if(cf==='large')return t.amt>=100;if(cf==='pending')return t.status==='pending';if(cf==='rcv')return t.status==='confirmed';if(cf==='detoken')return t.dtk==='available'||t.dtk==='pending';return t.sector===cf;});
+  const c=document.getElementById('tx-rows');
+  if(!rows.length){c.innerHTML='<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;font-weight:300;letter-spacing:0.1em;">No transactions match this filter</div>';return;}
+  const dmap={available:`<span class="dtk-chip avail">🏦 Available</span>`,pending:`<span class="dtk-chip pend">⏳ Pending</span>`,done:`<span class="dtk-chip done">✓ Converted</span>`};
+  c.innerHTML=rows.map(t=>{const il=t.amt>=100,id=t.dtk==='available';return`<div class="tx-row${id?' dtx':il?' ltx':''}"><div class="tx-hash">${t.hash}</div><div><div class="tx-proj">${t.project.length>38?t.project.slice(0,38)+'…':t.project}</div><div class="tx-from">From: ${t.from}</div><div class="tx-addr">${t.fa} ↗ ${t.ta}</div></div><div><span class="sec-chip">${t.sL}</span></div><div class="tx-amt${il?' ltx':' rcv'}">${t.amtS}</div><div class="tx-dt">${t.date}</div><div>${dmap[t.dtk]||'—'}</div><div><span class="st-chip ${t.status}">${t.status==='confirmed'?'⬤ Confirmed':'◎ Pending'}</span></div></div>`;}).join('');
+}
+
+function toggleDD(){document.getElementById('brand-dd').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!document.getElementById('nav-brand').contains(e.target))document.getElementById('brand-dd').classList.remove('open');});
+
+function openPlate(id){document.getElementById('brand-dd').classList.remove('open');document.getElementById(id).classList.add('open');document.getElementById('page-dim').classList.add('active');}
+function closePlate(id){document.getElementById(id).classList.remove('open');checkDim();}
+function checkDim(){const anyP=[...document.querySelectorAll('.plate-back.open')].length>0;const ppO=document.getElementById('algora-propose-backdrop')?.classList.contains('open');const wpO=document.getElementById('algora-wallet-backdrop')?.classList.contains('open');if(!anyP&&!ppO&&!wpO)document.getElementById('page-dim').classList.remove('active');}
+function saveProfile(){const n=document.getElementById('pf-name').value.trim();if(n){window.currentUser.name=n;const bddEl = document.getElementById('bdd-name'); if (bddEl) bddEl.textContent = window.currentUser.name;}closePlate('pl-profile');showToast('✓ Profile updated');}
+function doLogout(){closePlate('pl-logout');showToast('Logging out…');setTimeout(()=>window.location.href='/',1200);}
+
+function openPropose(){document.getElementById('page-dim').classList.add('active');ProposePanel.open();}
+function openWallet(){document.getElementById('page-dim').classList.add('active');WalletPanel.open();}
+const _ppc=ProposePanel.close.bind(ProposePanel);ProposePanel.close=function(){_ppc();setTimeout(checkDim,440);};
+const _wpc=WalletPanel.close.bind(WalletPanel);WalletPanel.close=function(){_wpc();setTimeout(checkDim,440);};
+
+window.showToast=function(msg){const t=document.getElementById('algora-toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);};
+
+const ltx=TXD.filter(t=>t.amt>=100&&t.status==='confirmed');let _bi=0,_bt=null;
+function showBtp(t){document.getElementById('btp-amt').textContent=t.amtS;document.getElementById('btp-desc').innerHTML=t.sL+'<br>'+t.project.slice(0,50);document.getElementById('btp-hash').textContent='TX: '+t.hash;document.getElementById('btp').classList.add('show');clearTimeout(_bt);_bt=setTimeout(closeBtp,8000);}
+function closeBtp(){document.getElementById('btp').classList.remove('show');}
+function startBtp(){if(!ltx.length)return;function n(){showBtp(ltx[_bi%ltx.length]);_bi++;setTimeout(n,32000+Math.random()*18000);}setTimeout(n,10000);}
+
+window.addEventListener('DOMContentLoaded',()=>{renderIdentity();renderTx();startBtp();});
+</script>
+<script src="../api.js"></script>
+<script src="../session-guard.js"></script>
+</body>
+</html>

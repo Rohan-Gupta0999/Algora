@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>India Map</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
+  canvas{display:block;width:100%;height:100%;}
+  #lbl{
+    position:fixed;pointer-events:none;
+    font:300 11px/1 'Lato',sans-serif;
+    color:rgba(255,240,180,1);letter-spacing:0.14em;text-transform:uppercase;
+    opacity:0;transition:opacity 0.12s;
+    background:rgba(0,0,0,0.75);
+    border:1px solid rgba(255,195,60,0.22);
+    padding:5px 10px;white-space:nowrap;
+  }
+  #lbl.on{opacity:1;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="lbl"></div>
+
+<script>
+// ── STATE DATA ──────────────────────────────────────────────────────────────
+const STATE_DATA={
+  "Maharashtra":{pop:126.4,area:307713,gdp:455,capital:"Mumbai",cities:534,hdi:0.696,literacy:82.9},
+  "Delhi":{pop:32.9,area:1484,gdp:293,capital:"New Delhi",cities:11,hdi:0.746,literacy:88.7},
+  "Uttar Pradesh":{pop:241.1,area:240928,gdp:252,capital:"Lucknow",cities:915,hdi:0.596,literacy:73.0},
+  "Rajasthan":{pop:81.0,area:342239,gdp:158,capital:"Jaipur",cities:296,hdi:0.629,literacy:66.1},
+  "Gujarat":{pop:63.9,area:196024,gdp:331,capital:"Gandhinagar",cities:242,hdi:0.672,literacy:79.3},
+  "Karnataka":{pop:67.6,area:191791,gdp:280,capital:"Bengaluru",cities:326,hdi:0.682,literacy:77.2},
+  "Tamil Nadu":{pop:77.8,area:130058,gdp:303,capital:"Chennai",cities:832,hdi:0.708,literacy:80.1},
+  "Andhra Pradesh":{pop:53.9,area:162975,gdp:178,capital:"Amaravati",cities:217,hdi:0.649,literacy:67.4},
+  "Telangana":{pop:39.4,area:112077,gdp:198,capital:"Hyderabad",cities:141,hdi:0.669,literacy:72.8},
+  "West Bengal":{pop:99.6,area:88752,gdp:193,capital:"Kolkata",cities:129,hdi:0.641,literacy:77.1},
+  "Bihar":{pop:128.5,area:94163,gdp:104,capital:"Patna",cities:199,hdi:0.576,literacy:63.8},
+  "Madhya Pradesh":{pop:85.6,area:308252,gdp:158,capital:"Bhopal",cities:476,hdi:0.606,literacy:70.6},
+  "Punjab":{pop:30.1,area:50362,gdp:142,capital:"Chandigarh",cities:217,hdi:0.693,literacy:76.7},
+  "Haryana":{pop:28.9,area:44212,gdp:154,capital:"Chandigarh",cities:154,hdi:0.708,literacy:76.6},
+  "Jharkhand":{pop:38.6,area:79716,gdp:96,capital:"Ranchi",cities:212,hdi:0.599,literacy:67.6},
+  "Odisha":{pop:46.9,area:155707,gdp:115,capital:"Bhubaneswar",cities:230,hdi:0.606,literacy:73.5},
+  "Chhattisgarh":{pop:29.4,area:135192,gdp:106,capital:"Raipur",cities:168,hdi:0.613,literacy:71.0},
+  "Kerala":{pop:35.7,area:38852,gdp:212,capital:"Thiruvananthapuram",cities:941,hdi:0.779,literacy:94.0},
+  "Jammu & Kashmir":{pop:14.2,area:42241,gdp:31,capital:"Srinagar",cities:95,hdi:0.688,literacy:68.7},
+  "Ladakh":{pop:0.27,area:59146,gdp:2,capital:"Leh",cities:12,hdi:0.620,literacy:66.2},
+  "Himachal Pradesh":{pop:7.5,area:55673,gdp:39,capital:"Shimla",cities:57,hdi:0.715,literacy:83.8},
+  "Uttarakhand":{pop:11.2,area:53483,gdp:58,capital:"Dehradun",cities:90,hdi:0.684,literacy:79.6},
+  "Assam":{pop:35.6,area:78438,gdp:69,capital:"Dispur",cities:189,hdi:0.614,literacy:73.2},
+  "Meghalaya":{pop:3.4,area:22429,gdp:14,capital:"Shillong",cities:23,hdi:0.655,literacy:75.5},
+  "Tripura":{pop:4.1,area:10486,gdp:12,capital:"Agartala",cities:22,hdi:0.658,literacy:87.2},
+  "Mizoram":{pop:1.2,area:21081,gdp:5,capital:"Aizawl",cities:14,hdi:0.705,literacy:91.6},
+  "Manipur":{pop:3.2,area:22327,gdp:10,capital:"Imphal",cities:27,hdi:0.696,literacy:79.9},
+  "Nagaland":{pop:2.2,area:16579,gdp:8,capital:"Kohima",cities:18,hdi:0.679,literacy:80.1},
+  "Arunachal Pradesh":{pop:1.6,area:83743,gdp:9,capital:"Itanagar",cities:16,hdi:0.662,literacy:66.9},
+  "Sikkim":{pop:0.7,area:7096,gdp:5,capital:"Gangtok",cities:8,hdi:0.716,literacy:82.2},
+  "Goa":{pop:1.5,area:3702,gdp:31,capital:"Panaji",cities:14,hdi:0.761,literacy:88.7},
+  "Chandigarh":{pop:1.2,area:114,gdp:21,capital:"Chandigarh",cities:1,hdi:0.775,literacy:86.4},
+};
+
+const CITIES=[
+  ["Mumbai","Maharashtra",19.076,72.877,20.7],["Pune","Maharashtra",18.520,73.856,6.6],
+  ["Nagpur","Maharashtra",21.145,79.082,2.7],["Thane","Maharashtra",19.218,72.978,2.4],
+  ["Pimpri-Chinchwad","Maharashtra",18.627,73.800,1.7],["Nashik","Maharashtra",19.998,73.789,1.5],
+  ["Aurangabad","Maharashtra",19.876,75.356,1.2],["Solapur","Maharashtra",17.686,75.906,0.9],
+  ["Amravati","Maharashtra",20.933,77.750,0.6],["Kolhapur","Maharashtra",16.705,74.243,0.6],
+  ["Nanded","Maharashtra",19.153,77.321,0.5],["Sangli","Maharashtra",16.854,74.564,0.4],
+  ["Latur","Maharashtra",18.407,76.560,0.4],["Akola","Maharashtra",20.709,77.007,0.4],
+  ["Jalgaon","Maharashtra",21.004,75.562,0.4],["Dhule","Maharashtra",20.901,74.778,0.4],
+  ["Ahmednagar","Maharashtra",19.095,74.749,0.3],["Satara","Maharashtra",17.686,74.003,0.3],
+  ["Chandrapur","Maharashtra",19.960,79.296,0.3],["Yavatmal","Maharashtra",20.390,78.120,0.2],
+  ["Delhi","Delhi",28.704,77.102,32.9],["Noida","Delhi",28.535,77.391,0.6],
+  ["Ghaziabad","Delhi",28.669,77.453,1.6],["Faridabad","Delhi",28.408,77.317,1.4],
+  ["Gurugram","Delhi",28.459,77.026,0.9],["Greater Noida","Delhi",28.474,77.503,0.35],
+  ["Lucknow","Uttar Pradesh",26.847,80.947,3.5],["Kanpur","Uttar Pradesh",26.449,80.331,3.0],
+  ["Agra","Uttar Pradesh",27.176,78.008,1.6],["Varanasi","Uttar Pradesh",25.317,83.005,1.2],
+  ["Meerut","Uttar Pradesh",28.984,77.706,1.4],["Prayagraj","Uttar Pradesh",25.435,81.845,1.1],
+  ["Bareilly","Uttar Pradesh",28.364,79.415,0.9],["Moradabad","Uttar Pradesh",28.835,78.776,0.9],
+  ["Aligarh","Uttar Pradesh",27.882,78.082,0.9],["Gorakhpur","Uttar Pradesh",26.760,83.373,0.7],
+  ["Saharanpur","Uttar Pradesh",29.967,77.546,0.7],["Firozabad","Uttar Pradesh",27.152,78.395,0.6],
+  ["Jhansi","Uttar Pradesh",25.448,78.568,0.5],["Muzaffarnagar","Uttar Pradesh",29.473,77.704,0.4],
+  ["Mathura","Uttar Pradesh",27.492,77.673,0.4],["Jaipur","Rajasthan",26.913,75.787,3.9],
+  ["Jodhpur","Rajasthan",26.289,73.015,1.1],["Kota","Rajasthan",25.182,75.834,1.0],
+  ["Bikaner","Rajasthan",28.014,73.312,0.7],["Ajmer","Rajasthan",26.449,74.639,0.6],
+  ["Udaipur","Rajasthan",24.571,73.691,0.5],["Bhilwara","Rajasthan",25.350,74.630,0.4],
+  ["Alwar","Rajasthan",27.554,76.634,0.4],["Sri Ganganagar","Rajasthan",29.917,73.877,0.3],
+  ["Sikar","Rajasthan",27.614,75.140,0.3],["Ahmedabad","Gujarat",23.022,72.571,8.4],
+  ["Surat","Gujarat",21.170,72.831,6.5],["Vadodara","Gujarat",22.307,73.181,1.8],
+  ["Rajkot","Gujarat",22.303,70.802,1.4],["Bhavnagar","Gujarat",21.767,72.152,0.6],
+  ["Jamnagar","Gujarat",22.468,70.058,0.6],["Gandhinagar","Gujarat",23.216,72.684,0.3],
+  ["Anand","Gujarat",22.557,72.951,0.3],["Junagadh","Gujarat",21.522,70.458,0.3],
+  ["Bengaluru","Karnataka",12.972,77.594,13.2],["Mysuru","Karnataka",12.295,76.639,0.9],
+  ["Hubballi","Karnataka",15.362,75.124,0.9],["Mangaluru","Karnataka",12.914,74.856,0.5],
+  ["Belagavi","Karnataka",15.849,74.497,0.5],["Kalaburagi","Karnataka",17.329,76.820,0.5],
+  ["Davanagere","Karnataka",14.465,75.921,0.4],["Ballari","Karnataka",15.139,76.925,0.4],
+  ["Tumkur","Karnataka",13.342,77.101,0.3],["Shivamogga","Karnataka",13.930,75.568,0.3],
+  ["Chennai","Tamil Nadu",13.083,80.270,7.1],["Coimbatore","Tamil Nadu",11.002,76.962,1.0],
+  ["Madurai","Tamil Nadu",9.925,78.119,1.0],["Tiruchirappalli","Tamil Nadu",10.790,78.703,0.9],
+  ["Salem","Tamil Nadu",11.657,78.146,0.8],["Tirunelveli","Tamil Nadu",8.727,77.700,0.5],
+  ["Erode","Tamil Nadu",11.341,77.717,0.5],["Tiruppur","Tamil Nadu",11.108,77.341,0.5],
+  ["Vellore","Tamil Nadu",12.916,79.133,0.4],["Thoothukudi","Tamil Nadu",8.762,78.135,0.3],
+  ["Visakhapatnam","Andhra Pradesh",17.686,83.218,2.0],["Vijayawada","Andhra Pradesh",16.506,80.648,1.0],
+  ["Guntur","Andhra Pradesh",16.302,80.457,0.8],["Nellore","Andhra Pradesh",14.443,79.987,0.5],
+  ["Kurnool","Andhra Pradesh",15.828,78.037,0.5],["Tirupati","Andhra Pradesh",13.629,79.419,0.4],
+  ["Hyderabad","Telangana",17.385,78.487,10.0],["Warangal","Telangana",17.977,79.598,0.8],
+  ["Nizamabad","Telangana",18.672,78.094,0.3],["Karimnagar","Telangana",18.438,79.129,0.3],
+  ["Kolkata","West Bengal",22.572,88.363,14.8],["Howrah","West Bengal",22.588,88.313,1.0],
+  ["Durgapur","West Bengal",23.480,87.320,0.6],["Asansol","West Bengal",23.683,86.982,0.5],
+  ["Siliguri","West Bengal",26.727,88.394,0.5],["Patna","Bihar",25.594,85.137,2.0],
+  ["Gaya","Bihar",24.797,85.012,0.5],["Bhagalpur","Bihar",25.244,87.014,0.4],
+  ["Muzaffarpur","Bihar",26.121,85.364,0.4],["Purnia","Bihar",25.777,87.475,0.3],
+  ["Indore","Madhya Pradesh",22.719,75.857,2.2],["Bhopal","Madhya Pradesh",23.259,77.412,1.9],
+  ["Jabalpur","Madhya Pradesh",23.165,79.955,1.1],["Gwalior","Madhya Pradesh",26.218,78.182,1.1],
+  ["Ujjain","Madhya Pradesh",23.183,75.777,0.5],["Ludhiana","Punjab",30.901,75.857,1.6],
+  ["Amritsar","Punjab",31.634,74.872,1.1],["Jalandhar","Punjab",31.326,75.576,0.9],
+  ["Patiala","Punjab",30.340,76.386,0.5],["Chandigarh","Chandigarh",30.733,76.779,1.0],
+  ["Rohtak","Haryana",28.895,76.607,0.4],["Hisar","Haryana",29.151,75.722,0.3],
+  ["Panipat","Haryana",29.391,76.972,0.3],["Ranchi","Jharkhand",23.344,85.309,1.1],
+  ["Jamshedpur","Jharkhand",22.804,86.185,0.6],["Dhanbad","Jharkhand",23.795,86.430,1.1],
+  ["Bokaro","Jharkhand",23.667,86.151,0.5],["Bhubaneswar","Odisha",20.296,85.825,0.9],
+  ["Cuttack","Odisha",20.462,85.883,0.6],["Rourkela","Odisha",22.227,84.864,0.5],
+  ["Berhampur","Odisha",19.311,84.793,0.4],["Raipur","Chhattisgarh",21.251,81.629,1.0],
+  ["Bhilai","Chhattisgarh",21.209,81.428,0.6],["Bilaspur","Chhattisgarh",22.079,82.149,0.4],
+  ["Kochi","Kerala",9.931,76.267,0.6],["Thiruvananthapuram","Kerala",8.524,76.936,0.6],
+  ["Kozhikode","Kerala",11.258,75.780,0.6],["Thrissur","Kerala",10.527,76.214,0.3],
+  ["Srinagar","Jammu & Kashmir",34.083,74.797,1.2],["Jammu","Jammu & Kashmir",32.726,74.857,0.5],
+  ["Anantnag","Jammu & Kashmir",33.731,75.148,0.1],["Baramulla","Jammu & Kashmir",34.209,74.344,0.1],
+  ["Leh","Ladakh",34.166,77.576,0.08],["Kargil","Ladakh",34.559,76.124,0.07],
+  ["Shimla","Himachal Pradesh",31.104,77.173,0.2],["Dharamsala","Himachal Pradesh",32.220,76.320,0.1],
+  ["Mandi","Himachal Pradesh",31.709,76.932,0.1],["Solan","Himachal Pradesh",30.909,77.101,0.1],
+  ["Dehradun","Uttarakhand",30.316,78.032,0.6],["Haridwar","Uttarakhand",29.945,78.164,0.3],
+  ["Haldwani","Uttarakhand",29.218,79.513,0.2],["Nainital","Uttarakhand",29.381,79.463,0.07],
+  ["Guwahati","Assam",26.144,91.736,0.9],["Dibrugarh","Assam",27.480,94.912,0.2],
+  ["Silchar","Assam",24.827,92.797,0.2],["Agartala","Tripura",23.831,91.279,0.4],
+  ["Aizawl","Mizoram",23.727,92.717,0.3],["Imphal","Manipur",24.817,93.936,0.4],
+  ["Shillong","Meghalaya",25.567,91.883,0.4],["Kohima","Nagaland",25.674,94.111,0.1],
+  ["Itanagar","Arunachal Pradesh",27.104,93.616,0.1],["Gangtok","Sikkim",27.329,88.612,0.1],
+  ["Panaji","Goa",15.499,73.827,0.1],["Margao","Goa",15.274,73.958,0.1],
+  ["Puducherry","Tamil Nadu",11.934,79.830,0.3],
+];
+
+const LAT_MIN=7.5,LAT_MAX=37.5,LON_MIN=66.0,LON_MAX=98.0;
+const MAJOR_POP=0.5;
+
+function proj(lat,lon,W,H){
+  const PAD=W*0.07;
+  return[PAD+((lon-LON_MIN)/(LON_MAX-LON_MIN))*(W-2*PAD),
+         PAD+((LAT_MAX-lat)/(LAT_MAX-LAT_MIN))*(H-2*PAD)];
+}
+function popR(p){return 1.5+Math.pow(Math.log(p+1)/Math.log(33),0.6)*3.5;}
+function hav(a,b){
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const lbl=document.getElementById('lbl');
+
+let W,H,nodes=[],edges=[],hov=null;
+let tf={x:0,y:0,s:1};
+let drag=false,ds=null,do_=null,didDrag=false;
+let wiggle=true,wiggleStart=null,wiggleFrame=null;
+let zoomAnim=null,zoomedState=null,zoomNodes=[];
+
+function resize(){
+  W=canvas.width=canvas.offsetWidth;
+  H=canvas.height=canvas.offsetHeight;
+  nodes=CITIES.map(([name,state,lat,lon,pop])=>{
+    lat=+lat;lon=+lon;pop=+pop;
+    const[bx,by]=proj(lat,lon,W,H);
+    const t=Math.log(pop+1)/Math.log(33);
+    const scatter=Math.round(6+t*40);
+    const grains=[];
+    let seed=((lat*1000+lon*1000)|0)>>>0;
+    function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/0xffffffff;}
+    for(let s=0;s<scatter;s++){
+      const angle=rand()*Math.PI*2;
+      const dist=(0.5+rand()*rand())*popR(pop)*4.5;
+      grains.push({dx:Math.cos(angle)*dist,dy:Math.sin(angle)*dist,a:rand()*(0.15+t*0.25),r:rand()*0.7+0.15});
+    }
+    const wseed=rand()*1000;
+    return{name,state,lat,lon,pop,bx,by,x:bx,y:by,r:popR(pop),t,grains,major:pop>=MAJOR_POP,wseed};
+  });
+  buildEdges();
+  wiggle=true;
+  startWiggle();
+  draw();
+}
+
+function buildEdges(){
+  edges=[];
+  const THRESH=340;
+  for(let i=0;i<nodes.length;i++)
+    for(let j=i+1;j<nodes.length;j++)
+      if(hav(nodes[i],nodes[j])<THRESH) edges.push([i,j]);
+  const conn=new Set(edges.flat());
+  for(let i=0;i<nodes.length;i++){
+    if(conn.has(i)) continue;
+    let best=-1,bd=Infinity;
+    for(let j=0;j<nodes.length;j++){if(j===i)continue;const d=hav(nodes[i],nodes[j]);if(d<bd){bd=d;best=j;}}
+    if(best!==-1) edges.push([i,best]);
+  }
+}
+
+function startWiggle(){
+  if(wiggleFrame) return;
+  wiggleStart=performance.now();
+  function loop(now){
+    if(!wiggle){nodes.forEach(n=>{n.x=n.bx;n.y=n.by;});draw();wiggleFrame=null;return;}
+    const t=(now-wiggleStart)/1000;
+    nodes.forEach(n=>{
+      const amp=1.6,freq=0.45+n.wseed*0.003,phase=n.wseed*6.28;
+      n.x=n.bx+Math.sin(t*freq+phase)*amp;
+      n.y=n.by+Math.cos(t*freq*1.3+phase+1)*amp;
+    });
+    draw();
+    wiggleFrame=requestAnimationFrame(loop);
+  }
+  wiggleFrame=requestAnimationFrame(loop);
+}
+
+function eio(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
+function animZoom(tx,ty,ts,cb){
+  if(zoomAnim) cancelAnimationFrame(zoomAnim);
+  const from={...tf};const start=performance.now();const dur=600;
+  function tick(now){
+    const t=eio(Math.min((now-start)/dur,1));
+    tf.x=from.x+(tx-from.x)*t;tf.y=from.y+(ty-from.y)*t;tf.s=from.s+(ts-from.s)*t;
+    draw();
+    if(t<1) zoomAnim=requestAnimationFrame(tick);
+    else{zoomAnim=null;if(cb)cb();}
+  }
+  zoomAnim=requestAnimationFrame(tick);
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // transparent background — parent page shows through
+  ctx.save();
+  ctx.translate(tf.x,tf.y);ctx.scale(tf.s,tf.s);
+  const vis=zoomedState?new Set(zoomNodes):null;
+  // edges
+  ctx.lineWidth=0.9/tf.s;
+  for(const[i,j]of edges){
+    if(vis&&(!vis.has(i)||!vis.has(j))) continue;
+    const a=nodes[i],b=nodes[j];
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+    ctx.strokeStyle='rgba(220,38,38,0.1)';ctx.stroke();
+  }
+  // nodes
+  for(let i=0;i<nodes.length;i++){
+    if(vis&&!vis.has(i)) continue;
+    const n=nodes[i];
+    const isHov=i===hov;
+    const dim=!n.major&&!zoomedState;
+    ctx.globalAlpha=dim?0.32:1.0;
+    // outer glow
+    const glowR=n.r*12+n.t*18;
+    const g1=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,glowR);
+    const a1=(0.03+n.t*0.055)*(dim?0.4:1);
+    g1.addColorStop(0,`rgba(220,60,60,${a1})`);
+    g1.addColorStop(0.5,`rgba(200,40,40,${a1*0.3})`);
+    g1.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath();ctx.arc(n.x,n.y,glowR,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();
+    // tight halo
+    const g2=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*3);
+    g2.addColorStop(0,'rgba(255,200,180,0.85)');
+    g2.addColorStop(0.4,'rgba(220,80,80,0.3)');
+    g2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r*3,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+    // grain scatter
+    for(const g of n.grains){
+      ctx.beginPath();ctx.arc(n.x+g.dx,n.y+g.dy,g.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(220,100,100,${g.a})`;ctx.fill();
+    }
+    // core dot
+    ctx.globalAlpha=1;
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r*0.7,0,Math.PI*2);
+    if(isHov){
+      ctx.shadowColor='rgba(255,120,120,1)';ctx.shadowBlur=22/tf.s;
+      ctx.fillStyle='rgba(255,200,200,0.98)';
+    } else {
+      ctx.fillStyle=dim?'rgba(255,200,200,0.35)':'rgba(255,220,220,0.95)';
+    }
+    ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+// expose zoom functions for parent page to call if needed
+window.indiaMapZoomState=function(stateName){
+  const idx=nodes.findIndex(n=>n.state===stateName);
+  if(idx<0) return;
+  zoomedState=stateName;
+  zoomNodes=nodes.map((n,i)=>n.state===stateName?i:-1).filter(i=>i>=0);
+  let mnX=Infinity,mxX=-Infinity,mnY=Infinity,mxY=-Infinity;
+  zoomNodes.forEach(i=>{mnX=Math.min(mnX,nodes[i].bx);mxX=Math.max(mxX,nodes[i].bx);mnY=Math.min(mnY,nodes[i].by);mxY=Math.max(mxY,nodes[i].by);});
+  const pad=80,rx=mxX-mnX||1,ry=mxY-mnY||1;
+  const sc=Math.min((W-pad*2)/rx,(H-pad*2)/ry)*0.82;
+  const cx=(mnX+mxX)/2,cy=(mnY+mxY)/2;
+  wiggle=false;
+  animZoom(W/2-cx*sc,H/2-cy*sc,sc,null);
+};
+window.indiaMapReset=function(){
+  zoomedState=null;zoomNodes=[];
+  animZoom(0,0,1,()=>{wiggle=true;startWiggle();});
+};
+
+function worldPos(cx,cy){return[(cx-tf.x)/tf.s,(cy-tf.y)/tf.s];}
+function findNode(wx,wy){
+  const vis=zoomedState?new Set(zoomNodes):null;
+  for(let i=nodes.length-1;i>=0;i--){
+    if(vis&&!vis.has(i)) continue;
+    const n=nodes[i],dx=n.x-wx,dy=n.y-wy;
+    if(Math.sqrt(dx*dx+dy*dy)<=Math.max(n.r+3,5)/tf.s) return i;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const[wx,wy]=worldPos(e.clientX-rect.left,e.clientY-rect.top);
+  if(drag){didDrag=true;tf.x=do_.x+(e.clientX-ds.x);tf.y=do_.y+(e.clientY-ds.y);draw();return;}
+  const h=findNode(wx,wy);
+  const sw=h===null;
+  if(wiggle!==sw){wiggle=sw;if(wiggle)startWiggle();}
+  if(h!==hov){hov=h;if(!wiggle)draw();}
+  if(h!==null){
+    lbl.textContent=nodes[h].name;lbl.classList.add('on');
+    // position label relative to viewport
+    const rect2=canvas.getBoundingClientRect();
+    lbl.style.left=Math.min(e.clientX+14,rect2.right-160)+'px';
+    lbl.style.top=(e.clientY-32)+'px';
+    // notify parent of hover
+    if(window.onCityHover) window.onCityHover(nodes[h]);
+  } else {
+    lbl.classList.remove('on');
+    if(window.onCityHover) window.onCityHover(null);
+  }
+});
+
+canvas.addEventListener('mouseleave',()=>{
+  hov=null;lbl.classList.remove('on');
+  if(!zoomedState&&!wiggle){wiggle=true;startWiggle();}else draw();
+});
+
+canvas.addEventListener('mousedown',e=>{
+  drag=true;didDrag=false;
+  ds={x:e.clientX,y:e.clientY};do_={x:tf.x,y:tf.y};
+});
+
+canvas.addEventListener('mouseup',e=>{
+  drag=false;
+  if(!didDrag){
+    const rect=canvas.getBoundingClientRect();
+    const[wx,wy]=worldPos(e.clientX-rect.left,e.clientY-rect.top);
+    const h=findNode(wx,wy);
+    if(h!==null){
+      // notify parent of click
+      if(window.onCityClick) window.onCityClick(nodes[h]);
+    }
+  }
+});
+
+canvas.addEventListener('wheel',e=>{
+  if(zoomedState) return;
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+  const f=e.deltaY<0?1.12:0.89;
+  tf.x=cx-(cx-tf.x)*f;tf.y=cy-(cy-tf.y)*f;
+  tf.s=Math.max(0.5,Math.min(16,tf.s*f));
+  draw();
+},{passive:false});
+
+const ro=new ResizeObserver(()=>resize());
+ro.observe(canvas);
+resize();
+</script>
+</body>
+</html>
