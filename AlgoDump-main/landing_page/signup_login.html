@@ -795,7 +795,7 @@ async function doSignup() {
       authTab('login', document.getElementById('tab-login'));
       const liEmail = document.getElementById('li-email');
       if (liEmail) liEmail.value = email;
-      showOtpSlot();
+      if (signupRole !== 'citizen') showOtpSlot();
       btn.textContent = 'Create Account'; btn.disabled = false;
     }, 2500);
 
@@ -811,22 +811,41 @@ async function doSignup() {
 async function doLogin() {
   const email = document.getElementById('li-email')?.value.trim();
   const pw    = document.getElementById('li-pw')?.value;
-
+ 
   hideMsg('li-msg');
-  if (!email || !pw) { showMsg('li-msg', '❌ Please enter your email and password.', 'error'); return; }
-
+  if (!email || !pw) {
+    showMsg('li-msg', '❌ Please enter your email and password.', 'error');
+    return;
+  }
+ 
   const btn = document.getElementById('li-btn');
-  btn.textContent = 'Sending OTP...'; btn.disabled = true;
-
+  btn.textContent = 'Verifying...';
+  btn.disabled    = true;
+ 
   try {
-    await API.login(email, pw);
+    const res = await API.login(email, pw);
+ 
+    // ── CITIZEN: skipOtp = true → save session and redirect now ──
+    if (res.skipOtp && res.token && res.user) {
+      API.saveSession(res.token, res.user);
+      showMsg('li-msg', `✓ Welcome, ${res.user.name}! Redirecting...`, 'success');
+      setTimeout(() => {
+        window.location.href = '../citizen_page/citizen.html';
+      }, 1000);
+      return; // stop here — don't show OTP slot for citizen
+    }
+ 
+    // ── GOV + CONTRACTOR: show OTP slot ──────────────────────────
     pendingEmail = email;
     showOtpSlot();
-    showMsg('li-msg', '✓ OTP sent to your email.', 'success');
-    btn.textContent = 'Log In'; btn.disabled = false;
+    showMsg('li-msg', '✓ OTP sent to your email. Check your inbox.', 'success');
+    btn.textContent = 'Log In';
+    btn.disabled    = false;
+ 
   } catch (e) {
     showMsg('li-msg', '❌ ' + e.message, 'error');
-    btn.textContent = 'Log In'; btn.disabled = false;
+    btn.textContent = 'Log In';
+    btn.disabled    = false;
   }
 }
 

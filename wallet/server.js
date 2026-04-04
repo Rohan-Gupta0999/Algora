@@ -12,7 +12,8 @@ const jwt     = require('jsonwebtoken');
 
 const { PORT } = require('./config');
 const { signUpUser, loginStep1, loginStep2, getWalletInfo, sendALGR } = require('./walletSystem');
-const { proposeTransaction, signProposal, getProposalDetails, getPendingProposalsForOfficial } = require('./multisigSystem');
+const { proposeTransaction, signProposal, getProposalDetails, 
+        getPendingProposalsForOfficial, getProposalsForContractor } = require('./multisigSystem');
 
 const app = express();
 
@@ -142,6 +143,20 @@ app.get('/api/proposals', async (req, res) => {
   }
 });
 
+// GET /api/contractor-proposals?algoId=CON-0001
+// Returns all proposals where this contractor is the recipient
+app.get('/api/contractor-proposals', async (req, res) => {
+  try {
+    const { algoId } = req.query;
+    if (!algoId) return res.json({ proposals: [] });
+    const { getProposalsForContractor } = require('./multisigSystem');
+    const proposals = await getProposalsForContractor(algoId);
+    res.json({ proposals: proposals || [] });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 6 — PROPOSE A TRANSACTION
@@ -231,7 +246,7 @@ app.listen(PORT, () => {
   console.log('');
   console.log('╔══════════════════════════════════════╗');
   console.log('║   ALGORA WALLET SERVER RUNNING       ║');
-  console.log(`║   http://localhost:${PORT}               ║`);
+  console.log(`║   http://localhost:${PORT}              ║`);
   console.log('╚══════════════════════════════════════╝');
   console.log('');
   console.log('Routes active:');

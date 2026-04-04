@@ -97,7 +97,15 @@ const API = {
     const raw   = localStorage.getItem('algora_user');
     if (!token || !raw) return null;
     try {
-      return { token, user: JSON.parse(raw) };
+      const user = JSON.parse(raw);
+
+return {
+  token,
+  user: {
+    ...user,
+    walletAddress: user.wallet_address   // ✅ THIS LINE FIXES EVERYTHING
+  }
+};
     } catch(e) {
       return null;
     }

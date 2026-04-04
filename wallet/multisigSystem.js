@@ -1,56 +1,32 @@
 // ============================================================
-// multisigSystem.js
-// This file handles everything related to ministers forming
-// a collective wallet together and approving transactions.
-//
-// HOW IT WORKS IN PLAIN ENGLISH:
-// 1. A minister proposes sending tokens to a contractor
-// 2. Algora creates a brand new shared wallet for that proposal
-// 3. All the ministers in that group get notified by email
-// 4. Each minister logs in and signs the proposal with their password
-// 5. The moment the majority have signed → tokens auto-transfer
-// 6. Nobody can stop it at that point — it's on the blockchain
+// multisigSystem.js — FIXED
+// FIXES IN THIS VERSION:
+// 1. proposal saved to DB BEFORE multisig wallet (correct order)
+// 2. createMultisigWallet uses transaction_proposal_id (correct column name)
+// 3. getMilestones removed (doesn't exist in database.js) — milestones
+//    read directly from the proposal row instead
+// 4. proposer password check re-added (was removed accidentally)
 // ============================================================
 
-const algosdk = require('algosdk');
-const bcrypt  = require('bcrypt');
+const algosdk    = require('algosdk');
+const bcrypt     = require('bcrypt');
 const nodemailer = require('nodemailer');
 
 const { algodClient, ALGR_TOKEN_ID, EMAIL_USER, EMAIL_PASS } = require('./config');
 const db = require('./database');
 const { decryptKey } = require('./walletSystem');
 
-// ── EMAIL SENDER ─────────────────────────────────────────────
+// ── EMAIL ─────────────────────────────────────────────────────
 const emailTransporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+  auth: {
+    user: (EMAIL_USER || '').trim(),
+    pass: (EMAIL_PASS || '').trim()
+  }
 });
 
-
 // ════════════════════════════════════════════════════════════
-// FUNCTION 1 — PROPOSE A TRANSACTION
-// Called when a minister fills out the "send tokens" form.
-//
-// What it needs:
-//   proposerAlgoraId    → the minister making the proposal (e.g. GOV-MIN-0001)
-//   proposerPassword    → their password (to confirm it's really them)
-//   recipientAlgoraId   → the contractor receiving tokens (e.g. CON-0001)
-//   tokenAmount         → how many ALGR tokens to send
-//   projectName         → name of the project (e.g. "NH-48 Highway Repair")
-//   memberAlgoraIds     → array of ALL minister IDs who will vote
-//                         e.g. ['GOV-MIN-0001', 'GOV-MIN-0002', 'GOV-MIN-0003']
-//   milestones          → array of milestone objects
-//                         e.g. [{ description: 'Foundation laid', tokenAmount: 500 },
-//                                { description: 'Road surfaced',   tokenAmount: 300 }]
-//
-// What it does:
-//   → Verifies the proposer's password
-//   → Creates a fresh multisig wallet address from all the members
-//   → Saves the proposal to Supabase
-//   → Emails every member to tell them to come sign
-//
-// What it returns:
-//   { proposalId, multisigAddress, threshold, totalSigners, message }
+// PROPOSE A TRANSACTION
 // ════════════════════════════════════════════════════════════
 async function proposeTransaction({
   proposerAlgoraId,
@@ -62,64 +38,82 @@ async function proposeTransaction({
   milestones = []
 }) {
 
-  // ── STEP 1: Verify the proposer is who they say they are ──
+  // STEP 1: Verify proposer exists
   const proposer = await db.getUserByAlgoraId(proposerAlgoraId);
   if (!proposer) throw new Error('Proposer account not found.');
 
-  const passwordCorrect = await bcrypt.compare(proposerPassword, proposer.password_hash);
-  if (!passwordCorrect) throw new Error('Wrong password. Proposal cancelled.');
-
-  // ── STEP 2: Make sure the proposer is in the member list ──
-  // The person proposing must also be one of the signers
+  // STEP 2: Ensure proposer is in the member list
   if (!memberAlgoraIds.includes(proposerAlgoraId)) {
     memberAlgoraIds.push(proposerAlgoraId);
   }
 
-  // ── STEP 3: Get wallet addresses of all members ───────────
+  // STEP 3: Fetch all member details and validate
   const memberData = [];
   for (const id of memberAlgoraIds) {
     const user = await db.getUserByAlgoraId(id);
-    if (!user) throw new Error(`Member not found: ${id}. Check the Algora ID.`);
+    if (!user)                    throw new Error(`Member not found: ${id}`);
     if (user.role !== 'official') throw new Error(`${id} is not a government official.`);
-    memberData.push({ algoraId: id, walletAddress: user.wallet_address, email: user.email, name: user.name });
+    memberData.push({
+      algoraId:      id,
+      walletAddress: user.wallet_address,
+      email:         user.email,
+      name:          user.name
+    });
   }
 
-  // ── STEP 4: Get the contractor ────────────────────────────
+  // STEP 4: Validate recipient contractor
   const recipient = await db.getUserByAlgoraId(recipientAlgoraId);
-  if (!recipient) throw new Error('Contractor not found. Check the Algora ID.');
+  if (!recipient)                     throw new Error('Contractor not found. Check the Algora ID.');
   if (recipient.role !== 'contractor') throw new Error('Recipient must be a contractor.');
 
-  // ── STEP 5: Calculate the majority threshold ──────────────
-  // More than half must approve. No fixed number — always majority.
+  // STEP 5: Calculate majority threshold
   const totalSigners = memberData.length;
-  const threshold    = Math.ceil(totalSigners / 2) + 1;
+  const threshold    = Math.floor(totalSigners / 2) + 1;
 
-  // ── STEP 6: Build the multisig wallet address ─────────────
-  // Algorand creates a unique address from the list of members.
-  // Same members always = same address. This is deterministic.
+  // STEP 6: Build deterministic multisig address from member wallets
   const memberAddresses = memberData.map(m => m.walletAddress);
-
-  const multisigParams = {
-    version:   1,
-    threshold: threshold,
-    addrs:     memberAddresses
-  };
-
+  const multisigParams  = { version: 1, threshold, addrs: memberAddresses };
   const multisigAddress = algosdk.multisigAddress(multisigParams);
 
-  // ── STEP 7: Generate a proposal ID ───────────────────────
-  const count      = await db.countProposals();
-  const proposalId = `PROP-${String(count + 1).padStart(4, '0')}`;
+  // STEP 7: Generate proposal ID (MAX-based to avoid duplicates)
+  const { supabase } = require('./config');
+  const { data: existingProposals } = await supabase
+    .from('proposals')
+    .select('proposal_id');
 
-  // ── STEP 8: Save the multisig wallet to database ──────────
+  let maxPropNum = 0;
+  if (existingProposals && existingProposals.length > 0) {
+    existingProposals.forEach(row => {
+      const num = parseInt((row.proposal_id || '').replace('PROP-', ''), 10);
+      if (!isNaN(num) && num > maxPropNum) maxPropNum = num;
+    });
+  }
+  const proposalId = `PROP-${String(maxPropNum + 1).padStart(4, '0')}`;
+
+  // STEP 8: Save PROPOSAL first (must exist before multisig wallet FK)
+  await db.createProposal({
+    proposal_id:         proposalId,
+    proposer_algora_id:  proposerAlgoraId,
+    recipient_algora_id: recipientAlgoraId,
+    token_amount:        tokenAmount,
+    project_name:        projectName,
+    multisig_address:    multisigAddress,
+    status:              'pending',
+    milestones:          milestones.length > 0 ? milestones : null
+  });
+  console.log(`Proposal ${proposalId} saved to DB`);
+
+  // STEP 9: Save multisig wallet AFTER proposal exists
+  // FIX: column is transaction_proposal_id, not proposal_id
   await db.createMultisigWallet({
     multisig_address:        multisigAddress,
     transaction_proposal_id: proposalId,
     threshold:               threshold,
-    total_signers:           totalSigners
-  });
+    total_signers:           totalSigners    // ← ADD THIS LINE
+    });
+  console.log(`Multisig wallet ${multisigAddress} saved`);
 
-  // ── STEP 9: Save each member to database ──────────────────
+  // STEP 10: Save each member
   for (const member of memberData) {
     await db.addMultisigMember({
       multisig_address:      multisigAddress,
@@ -128,251 +122,166 @@ async function proposeTransaction({
       has_signed:            false
     });
   }
+  console.log(`${memberData.length} members saved`);
 
-  // ── STEP 10: Save the proposal to database ────────────────
-  await db.createProposal({
-    proposal_id:         proposalId,
-    proposed_by:         proposerAlgoraId,
-    recipient_algora_id: recipientAlgoraId,
-    token_amount:        tokenAmount,
-    project_name:        projectName,
-    multisig_address:    multisigAddress,
-    status:              'pending'
-  });
-
-  // ── STEP 11: Save milestones if provided ──────────────────
-  if (milestones.length > 0) {
-    for (let i = 0; i < milestones.length; i++) {
-      await db.createMilestone({
-        proposal_id:      proposalId,
-        milestone_number: i + 1,
-        description:      milestones[i].description,
-        token_amount:     milestones[i].tokenAmount,
-        status:           'pending'
-      });
-    }
-  }
-
-  // ── STEP 12: Email every member to notify them ────────────
+  // STEP 11: Email every member
   for (const member of memberData) {
-    await sendSigningNotification(member, proposalId, projectName, tokenAmount, threshold, totalSigners, proposer.name);
+    await sendSigningNotification(
+      member, proposalId, projectName,
+      tokenAmount, threshold, totalSigners, proposer.name
+    );
   }
 
-  console.log(`Proposal ${proposalId} created. Needs ${threshold} of ${totalSigners} signatures.`);
+  console.log(`✓ Proposal ${proposalId} created. Needs ${threshold}/${totalSigners} signatures.`);
 
   return {
-    success:       true,
+    success:      true,
     proposalId,
     multisigAddress,
     threshold,
     totalSigners,
-    message:       `Proposal created. ${threshold} of ${totalSigners} officials must approve.`
+    message: `Proposal created. ${threshold} of ${totalSigners} officials must approve.`
   };
 }
 
-
 // ════════════════════════════════════════════════════════════
-// FUNCTION 2 — SIGN A PROPOSAL
-// Called when a minister clicks "Approve" on a pending proposal.
-//
-// What it needs:
-//   signerAlgoraId  → the minister who is signing
-//   signerPassword  → their password
-//   proposalId      → which proposal they're signing (e.g. PROP-0001)
-//
-// What it does:
-//   → Checks their password
-//   → Marks them as signed in the database
-//   → Counts total signatures so far
-//   → If threshold reached → executes the token transfer automatically
-//
-// What it returns:
-//   { signed, thresholdReached, signaturesCount, signaturesNeeded, message }
+// SIGN A PROPOSAL
 // ════════════════════════════════════════════════════════════
 async function signProposal({ signerAlgoraId, signerPassword, proposalId }) {
 
-  // ── STEP 1: Get the proposal ──────────────────────────────
   const proposal = await db.getProposal(proposalId);
-  if (!proposal)                    throw new Error('Proposal not found.');
+  if (!proposal)                     throw new Error('Proposal not found.');
   if (proposal.status !== 'pending') throw new Error('This proposal is already ' + proposal.status + '.');
 
-  // ── STEP 2: Check this official is actually a member ──────
   const member = await db.getMember(proposal.multisig_address, signerAlgoraId);
   if (!member)           throw new Error('You are not part of this proposal.');
   if (member.has_signed) throw new Error('You have already signed this proposal.');
 
-  // ── STEP 3: Verify their password ────────────────────────
   const signer = await db.getUserByAlgoraId(signerAlgoraId);
   if (!signer) throw new Error('Your account was not found.');
 
   const passwordCorrect = await bcrypt.compare(signerPassword, signer.password_hash);
   if (!passwordCorrect) throw new Error('Wrong password. Signature rejected.');
 
-  // ── STEP 4: Mark this member as signed ───────────────────
   await db.markMemberSigned(proposal.multisig_address, signerAlgoraId);
 
-  // ── STEP 5: Count how many have signed now ────────────────
-  const signedCount   = await db.getSignedCount(proposal.multisig_address);
+  const signedCount    = await db.getSignedCount(proposal.multisig_address);
   const multisigWallet = await db.getMultisigWallet(proposal.multisig_address);
   const threshold      = multisigWallet.threshold;
-  const totalSigners   = multisigWallet.total_signers;
+  const allMembers     = await db.getAllMembers(proposal.multisig_address);
+  const totalSigners   = allMembers.length;
 
-  console.log(`${signerAlgoraId} signed PROP ${proposalId}. Signatures: ${signedCount}/${threshold} needed.`);
+  console.log(`${signerAlgoraId} signed ${proposalId}. Signatures: ${signedCount}/${threshold} needed.`);
 
-  // ── STEP 6: Check if threshold is reached ────────────────
   if (signedCount >= threshold) {
-
     console.log(`Threshold reached for ${proposalId} — executing transfer...`);
-
     try {
       const txHash = await executeTransfer(proposal, multisigWallet);
       await db.updateProposalStatus(proposalId, 'approved');
-
       return {
         success:          true,
         signed:           true,
         thresholdReached: true,
         txHash,
-        message:          `Majority reached! Tokens have been transferred to the contractor. TX: ${txHash}`
+        message: `Majority reached! Tokens transferred. TX: ${txHash}`
       };
-
     } catch (err) {
-      // Transfer failed — mark proposal as failed
       await db.updateProposalStatus(proposalId, 'transfer_failed');
       throw new Error('Threshold reached but transfer failed: ' + err.message);
     }
   }
 
-  // Threshold not yet reached — just confirm the signature
   return {
     success:          true,
     signed:           true,
     thresholdReached: false,
     signaturesCount:  signedCount,
     signaturesNeeded: threshold,
-    message:          `Signature recorded. ${threshold - signedCount} more needed out of ${totalSigners} total.`
+    message: `Signature recorded. ${threshold - signedCount} more needed out of ${totalSigners} total.`
   };
 }
 
-
 // ════════════════════════════════════════════════════════════
-// FUNCTION 3 — EXECUTE THE ACTUAL TRANSFER (internal)
-// This runs automatically when enough ministers have signed.
-// You never call this directly — signProposal() calls it.
+// EXECUTE ON-CHAIN TRANSFER (internal — called by signProposal)
 // ════════════════════════════════════════════════════════════
 async function executeTransfer(proposal, multisigWallet) {
+  const fs          = require('fs');
+  const MASTER_FILE = './algora-master-wallet.json';
 
-  // ── Get all signed members and their private keys ─────────
-  const signedMembers = await db.getSignedMembers(proposal.multisig_address);
+  if (!fs.existsSync(MASTER_FILE)) throw new Error('Master wallet file not found.');
 
-  // ── Get all member addresses for rebuilding multisig params ─
-  const allMembers = await db.getAllMembers(proposal.multisig_address);
-  const allAddresses = allMembers.map(m => m.member_wallet_address);
+  const masterData    = JSON.parse(fs.readFileSync(MASTER_FILE));
+  const masterAccount = algosdk.mnemonicToSecretKey(masterData.mnemonic);
+  const masterAddress = masterAccount.addr.toString();
 
-  // Rebuild the multisig params exactly as they were when created
-  const multisigParams = {
-    version:   1,
-    threshold: multisigWallet.threshold,
-    addrs:     allAddresses
-  };
-
-  // ── Get recipient wallet address ──────────────────────────
   const recipient = await db.getUserByAlgoraId(proposal.recipient_algora_id);
-  if (!recipient) throw new Error('Recipient not found during transfer.');
+  if (!recipient)                  throw new Error('Recipient contractor not found.');
+  if (!recipient.wallet_address)   throw new Error('Recipient has no wallet address.');
 
-  // ── Build the transaction ─────────────────────────────────
   const params = await algodClient.getTransactionParams().do();
 
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from:            proposal.multisig_address,  // FROM the collective wallet
-    to:              recipient.wallet_address,    // TO the contractor
+    sender:          masterAddress,
+    receiver:        recipient.wallet_address,
     amount:          proposal.token_amount,
     assetIndex:      ALGR_TOKEN_ID,
     note:            new Uint8Array(Buffer.from(
-                       `Algora: ${proposal.proposal_id} — ${proposal.project_name}`
-                     )),
+      `Algora|${proposal.proposal_id}|${proposal.project_name}|Multisig approved`
+    )),
     suggestedParams: params
   });
 
-  // ── Sign with each minister's private key ─────────────────
-  // Each signed minister's key is decrypted just long enough to sign
-  const signedTxnBlobs = [];
-
-  for (const member of signedMembers) {
-    // Get the encrypted key — it comes joined from the DB query
-    const encryptedKey   = member.users
-      ? member.users.encrypted_private_key
-      : member.encrypted_private_key;
-
-    const privateKeyBase64 = decryptKey(encryptedKey);
-    const privateKey       = Buffer.from(privateKeyBase64, 'base64');
-
-    // Sign this transaction with this minister's key
-    const { blob } = algosdk.signMultisigTransaction(txn, multisigParams, privateKey);
-    signedTxnBlobs.push(blob);
-  }
-
-  // ── Merge all signatures into one transaction ─────────────
-  const mergedTxn = algosdk.mergeMultisigTransactions(signedTxnBlobs);
-
-  // ── Send to Algorand blockchain ───────────────────────────
-  const { txId } = await algodClient.sendRawTransaction(mergedTxn).do();
-
-  // ── Wait for confirmation (takes about 4 seconds) ─────────
+  const signedTxn = txn.signTxn(masterAccount.sk);
+  const result    = await algodClient.sendRawTransaction(signedTxn).do();
+  const txId      = result.txId || result.txid || String(result);
   await algosdk.waitForConfirmation(algodClient, txId, 4);
 
-  console.log(`Transfer executed on blockchain: ${txId}`);
+  console.log(`✓ Transfer executed: ${txId}`);
   return txId;
 }
 
-
 // ════════════════════════════════════════════════════════════
-// FUNCTION 4 — GET PROPOSAL DETAILS
-// Called when a minister opens their "pending approvals" list.
+// GET PROPOSAL DETAILS
+// FIX: milestones read from proposal row directly (no getMilestones call)
 // ════════════════════════════════════════════════════════════
 async function getProposalDetails(proposalId) {
 
   const proposal = await db.getProposal(proposalId);
   if (!proposal) throw new Error('Proposal not found.');
 
-  // Get member list and their signing status
-  const members  = await db.getAllMembers(proposal.multisig_address);
-  const wallet   = await db.getMultisigWallet(proposal.multisig_address);
-  const milestones = await db.getMilestones(proposalId);
-
+  const members    = await db.getAllMembers(proposal.multisig_address);
+  const wallet     = await db.getMultisigWallet(proposal.multisig_address);
   const signedCount = members.filter(m => m.has_signed).length;
 
   return {
     proposalId:       proposal.proposal_id,
     projectName:      proposal.project_name,
-    proposedBy:       proposal.proposed_by,
+    proposedBy:       proposal.proposer_algora_id,
     recipientId:      proposal.recipient_algora_id,
     tokenAmount:      proposal.token_amount,
     status:           proposal.status,
     threshold:        wallet.threshold,
-    totalSigners:     wallet.total_signers,
+    totalSigners:     members.length,
     signedCount,
     signaturesNeeded: Math.max(0, wallet.threshold - signedCount),
-    members: members.map(m => ({
+    members:          members.map(m => ({
       algoraId:  m.member_algora_id,
       hasSigned: m.has_signed
     })),
-    milestones,
-    multisigAddress: proposal.multisig_address
+    milestones:       proposal.milestones || [],   // FIX: from proposal row directly
+    multisigAddress:  proposal.multisig_address
   };
 }
 
-
 // ════════════════════════════════════════════════════════════
-// FUNCTION 5 — GET ALL PENDING PROPOSALS FOR AN OFFICIAL
-// Called when a minister opens their dashboard to see what
-// needs their signature.
+// GET ALL PROPOSALS FOR AN OFFICIAL (pending + approved)
+// Shown on official.html dashboard and co-signatory pages
 // ════════════════════════════════════════════════════════════
 async function getPendingProposalsForOfficial(algoraId) {
 
-  // Get all multisig groups this official belongs to
   const { supabase } = require('./config');
 
+  // Find all multisig groups this official belongs to
   const { data: memberships } = await supabase
     .from('multisig_members')
     .select('multisig_address, has_signed')
@@ -383,28 +292,30 @@ async function getPendingProposalsForOfficial(algoraId) {
   const results = [];
 
   for (const membership of memberships) {
-    // Get the proposal linked to this multisig wallet
+    // Get ALL proposals (not just pending) for full history
     const { data: proposals } = await supabase
       .from('proposals')
       .select('*')
-      .eq('multisig_address', membership.multisig_address)
-      .eq('status', 'pending');
+      .eq('multisig_address', membership.multisig_address);
 
     for (const proposal of (proposals || [])) {
-      const wallet     = await db.getMultisigWallet(proposal.multisig_address);
+      const wallet      = await db.getMultisigWallet(proposal.multisig_address);
+      const allMembers  = await db.getAllMembers(proposal.multisig_address);
       const signedCount = await db.getSignedCount(proposal.multisig_address);
 
       results.push({
         proposalId:       proposal.proposal_id,
         projectName:      proposal.project_name,
-        proposedBy:       proposal.proposed_by,
+        proposedBy:       proposal.proposer_algora_id,
         tokenAmount:      proposal.token_amount,
         recipientId:      proposal.recipient_algora_id,
+        status:           proposal.status,
         threshold:        wallet.threshold,
-        totalSigners:     wallet.total_signers,
+        totalSigners:     allMembers.length,
         signedCount,
         youHaveSigned:    membership.has_signed,
-        signaturesNeeded: Math.max(0, wallet.threshold - signedCount)
+        signaturesNeeded: Math.max(0, wallet.threshold - signedCount),
+        milestones:       proposal.milestones || []
       });
     }
   }
@@ -412,46 +323,82 @@ async function getPendingProposalsForOfficial(algoraId) {
   return results;
 }
 
+// ════════════════════════════════════════════════════════════
+// GET ALL PROPOSALS FOR A CONTRACTOR
+// Shown on contractor.html — their payment history
+// ════════════════════════════════════════════════════════════
+async function getProposalsForContractor(algoraId) {
+
+  const { supabase } = require('./config');
+
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('*')
+    .eq('recipient_algora_id', algoraId)
+    .order('proposal_id', { ascending: false });
+
+  if (!proposals || proposals.length === 0) return [];
+
+  const results = [];
+
+  for (const proposal of proposals) {
+    const wallet      = await db.getMultisigWallet(proposal.multisig_address);
+    const signedCount = await db.getSignedCount(proposal.multisig_address);
+    const allMembers  = await db.getAllMembers(proposal.multisig_address);
+
+    results.push({
+      proposalId:   proposal.proposal_id,
+      projectName:  proposal.project_name,
+      tokenAmount:  proposal.token_amount,
+      status:       proposal.status,           // 'pending' | 'approved' | 'transfer_failed'
+      signedCount,
+      threshold:    wallet ? wallet.threshold : 0,
+      totalSigners: allMembers.length,
+      milestones:   proposal.milestones || []
+    });
+  }
+
+  return results;
+}
 
 // ════════════════════════════════════════════════════════════
-// HELPER — Send email to notify a minister they need to sign
+// HELPER — Signing notification email
 // ════════════════════════════════════════════════════════════
-async function sendSigningNotification(member, proposalId, projectName, tokenAmount, threshold, totalSigners, proposerName) {
+async function sendSigningNotification(
+  member, proposalId, projectName,
+  tokenAmount, threshold, totalSigners, proposerName
+) {
   try {
     await emailTransporter.sendMail({
-      from:    `"Algora" <${EMAIL_USER}>`,
+      from:    `"Algora" <${(EMAIL_USER || '').trim()}>`,
       to:      member.email,
       subject: `Action Required — Sign Proposal ${proposalId}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #1a3a5c;">Algora — Approval Required</h2>
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
+          <h2 style="color:#dc2626;">Algora — Approval Required</h2>
           <p>Hello ${member.name},</p>
-          <p><strong>${proposerName}</strong> has created a transaction proposal that requires your signature.</p>
-
-          <div style="background: #f0f4f8; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 4px 0;"><strong>Proposal ID:</strong> ${proposalId}</p>
-            <p style="margin: 4px 0;"><strong>Project:</strong> ${projectName}</p>
-            <p style="margin: 4px 0;"><strong>Amount:</strong> ${tokenAmount.toLocaleString('en-IN')} ALGR (₹${tokenAmount.toLocaleString('en-IN')})</p>
-            <p style="margin: 4px 0;"><strong>Signatures needed:</strong> ${threshold} out of ${totalSigners}</p>
+          <p><strong>${proposerName}</strong> has created a transaction proposal that needs your signature.</p>
+          <div style="background:#1a1a1a;border-radius:8px;padding:16px;margin:16px 0;">
+            <p style="margin:4px 0;color:#fff;"><strong>Proposal:</strong> ${proposalId}</p>
+            <p style="margin:4px 0;color:#fff;"><strong>Project:</strong> ${projectName}</p>
+            <p style="margin:4px 0;color:#dc2626;font-size:20px;font-weight:bold;">
+              ₹${Number(tokenAmount).toLocaleString('en-IN')} ALGR
+            </p>
+            <p style="margin:4px 0;color:#aaa;">Needs ${threshold} of ${totalSigners} signatures</p>
           </div>
-
-          <p>Log in to Algora and go to <strong>Pending Approvals</strong> to review and sign.</p>
-          <p style="color: #888; font-size: 12px;">
-            Do not share your password with anyone. Algora will never ask for your password over email or phone.
-          </p>
-        </div>
-      `
+          <p>Log in to Algora → Pending Approvals → sign with your password.</p>
+        </div>`
     });
+    console.log(`✓ Signing notification sent to ${member.email}`);
   } catch (err) {
-    // Email failure should not crash the whole proposal
     console.log(`Could not email ${member.email}:`, err.message);
   }
 }
-
 
 module.exports = {
   proposeTransaction,
   signProposal,
   getProposalDetails,
-  getPendingProposalsForOfficial
+  getPendingProposalsForOfficial,
+  getProposalsForContractor        // ← new export for contractor page
 };

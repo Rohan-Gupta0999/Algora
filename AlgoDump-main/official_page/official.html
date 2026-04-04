@@ -229,6 +229,27 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
   </div>
 </div>
 
+<!-- SIGNING PLATE -->
+<div class="plate-back" id="pl-sign">
+  <div class="plate-dim" onclick="closePlate('pl-sign')"></div>
+  <div class="plate">
+    <div class="ph">
+      <div><div class="ph-eyebrow">Multisig</div><div class="ph-title">Sign Proposal</div></div>
+      <div class="ph-close" onclick="closePlate('pl-sign')">✕</div>
+    </div>
+    <div class="pb">
+      <div id="sign-details" style="margin-bottom:16px;"></div>
+      <div class="pf">
+        <label class="pf-lbl">Your Password (confirms your signature on-chain)</label>
+        <input class="pf-inp" id="sign-pw" type="password" placeholder="Enter your password">
+      </div>
+      <div id="sign-msg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:7px;font-size:12px;line-height:1.5;"></div>
+      <button class="pf-btn" id="sign-btn" onclick="doSignProposal()">✍️ Sign This Proposal →</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- NAV -->
 <nav>
   <div class="nav-brand" id="nav-brand">
@@ -305,8 +326,13 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
       <button class="tx-filter" onclick="filterTx('pending',this)">⏳ Pending Sig.</button>
       <button class="tx-filter" onclick="filterTx('large',this)">🔴 &gt;₹100 Cr</button>
     </div>
+    <div class="tx-wrap" id="real-pending-wrap" style="margin-bottom:18px;">
+      <div class="tx-head"><div>Proposal ID</div><div>Project / Recipient</div><div>Type</div><div>Amount</div><div>Proposed By</div><div>Sigs</div><div>Action</div></div>
+      <div id="real-pending-list"><div style="padding:28px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;">Loading proposals…</div></div>
+    </div>
     <div class="tx-wrap">
-      <div class="tx-head"><div>TX Hash</div><div>Project / Recipient</div><div>Sector</div><div>Amount</div><div>Date</div><div>Sigs</div><div>Status</div></div>
+      <div class="tx-head">
+        <div>TX Hash</div><div>Project / Recipient</div><div>Sector</div><div>Amount</div><div>Date</div><div>Sigs</div><div>Status</div></div>
       <div id="tx-rows"></div>
     </div>
   </section>
@@ -341,8 +367,8 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
   window.currentUser = {
     name:        u.name          || '—',
     role:        u.role          || 'official',
-    govId:       u.algoId        || u.govId       || '—',
-    wallet:      u.walletAddress || u.wallet       || '—',
+    govId:       u.algoraId      || u.algoId      || u.govId       || '—',
+    wallet:      u.walletAddress || u.wallet_address || u.wallet_Address || '—',
     msigAddress: u.msigAddress   || '—',
     email:       u.email         || '—',
     phone:       u.phone         || '—',
@@ -427,7 +453,111 @@ function showBtp(t){document.getElementById('btp-amt').textContent=t.amtS;docume
 function closeBtp(){document.getElementById('btp').classList.remove('show');}
 function startBtp(){if(!ltx.length)return;function n(){showBtp(ltx[_bi%ltx.length]);_bi++;setTimeout(n,30000+Math.random()*18000);}setTimeout(n,10000);}
 
-window.addEventListener('DOMContentLoaded',()=>{renderIdentity();renderTx();startBtp();});
+window.addEventListener('DOMContentLoaded',()=>{renderIdentity();renderTx();startBtp();loadPendingProposals();});
+// ── REAL PENDING PROPOSALS ────────────────────────────────────────────────
+let activePropId = null;
+
+async function loadPendingProposals() {
+  const algoId = window.currentUser?.govId;
+  if (!algoId || algoId === '—') return;
+  try {
+    const res = await fetch('http://localhost:3000/api/proposals?algoId=' + algoId);
+    const data = await res.json();
+    const proposals = data.proposals || [];
+
+    // Update counts
+    const pend = proposals.length;
+    document.getElementById('s-pend').textContent = pend;
+    document.getElementById('nav-badge').textContent = pend || '';
+    document.getElementById('ps-pill').textContent = pend + ' Pending';
+    document.getElementById('pstrip').style.display = pend > 0 ? 'flex' : 'none';
+    document.getElementById('s-pend-sub').textContent =
+      pend + ' proposal' + (pend !== 1 ? 's' : '') + ' awaiting your signature';
+
+    // Render in the real-pending div
+    const list = document.getElementById('real-pending-list');
+    if (!list) return;
+    if (proposals.length === 0) {
+      list.innerHTML = '<div style="padding:28px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;letter-spacing:0.08em;">No pending proposals for your approval</div>';
+      return;
+    }
+    list.innerHTML = proposals.map(p => `
+      <div class="tx-row" onclick="openSignPlate('${p.proposalId}')" style="border-left:2px solid var(--red);">
+        <div class="tx-hash">${p.proposalId}</div>
+        <div><div class="tx-proj">${p.projectName}</div><div class="tx-recp">→ ${p.recipientId}</div></div>
+        <div><span class="sec-chip">🏛️ Multisig</span></div>
+        <div class="tx-amt al">₹${Number(p.tokenAmount).toLocaleString('en-IN')}</div>
+        <div class="tx-dt">${p.proposedBy || '—'}</div>
+        <div><span class="sig-pill${p.signedCount >= p.threshold ? ' full' : ''}">${p.signedCount}/${p.threshold}</span></div>
+        <div><span class="st-chip ${p.youHaveSigned ? 'confirmed' : 'pending'}">${p.youHaveSigned ? '✓ Signed' : '⏳ Sign'}</span></div>
+      </div>`).join('');
+  } catch(e) {
+    console.log('Could not load proposals:', e.message);
+  }
+}
+
+async function openSignPlate(proposalId) {
+  activePropId = proposalId;
+  try {
+    const res  = await fetch('http://localhost:3000/api/proposal/' + proposalId);
+    const p    = await res.json();
+    document.getElementById('sign-details').innerHTML = `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(220,38,38,0.2);
+                  border-radius:10px;padding:16px;font-size:13px;line-height:1.9;">
+        <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;
+                    color:rgba(220,38,38,0.7);margin-bottom:8px;">Proposal Details</div>
+        <div><strong>${p.projectName}</strong></div>
+        <div style="color:rgba(255,255,255,0.55);">Recipient: ${p.recipientId}</div>
+        <div style="color:rgba(255,255,255,0.55);">Amount: ₹${Number(p.tokenAmount).toLocaleString('en-IN')} ALGR</div>
+        <div style="color:rgba(255,255,255,0.55);">Signatures: ${p.signedCount} of ${p.threshold} required</div>
+        <div style="color:rgba(255,255,255,0.55);">Proposed by: ${p.proposedBy}</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('sign-details').textContent = 'Could not load proposal details.';
+  }
+  document.getElementById('sign-pw').value = '';
+  document.getElementById('sign-msg').style.display = 'none';
+  document.getElementById('sign-btn').textContent = '✍️ Sign This Proposal →';
+  document.getElementById('sign-btn').disabled = false;
+  openPlate('pl-sign');
+}
+
+async function doSignProposal() {
+  const pw  = document.getElementById('sign-pw').value;
+  const msg = document.getElementById('sign-msg');
+  const btn = document.getElementById('sign-btn');
+  if (!pw) {
+    msg.textContent = '❌ Enter your password to confirm.';
+    msg.style.cssText = 'display:block;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#fca5a5;border-radius:7px;padding:10px 14px;font-size:12px;';
+    return;
+  }
+  btn.textContent = 'Signing…'; btn.disabled = true;
+  try {
+    const res = await fetch('http://localhost:3000/api/sign', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        signerAlgoraId: window.currentUser.govId,
+        signerPassword: pw,
+        proposalId:     activePropId
+      })
+    }).then(r => r.json());
+    if (res.error) throw new Error(res.error);
+    msg.textContent = res.thresholdReached
+      ? '🎉 Threshold reached! Tokens transferred on-chain. TX: ' + res.txHash
+      : '✓ ' + res.message;
+    msg.style.cssText = 'display:block;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:10px 14px;font-size:12px;';
+    setTimeout(() => {
+      closePlate('pl-sign');
+      loadPendingProposals();
+      if (res.thresholdReached) showToast('🎉 Tokens transferred! TX: ' + res.txHash);
+    }, res.thresholdReached ? 3000 : 1500);
+  } catch(e) {
+    msg.textContent = '❌ ' + e.message;
+    msg.style.cssText = 'display:block;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#fca5a5;border-radius:7px;padding:10px 14px;font-size:12px;';
+    btn.textContent = '✍️ Sign This Proposal →'; btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>

@@ -199,8 +199,19 @@ async function getSignedMembers(multisigAddress) {
   return data || [];
 }
 
+async function getMilestones(proposalId) {
+  const { data } = await supabase
+    .from('proposals')
+    .select('milestones')
+    .eq('proposal_id', proposalId)
+    .single();
+  if (!data || !data.milestones) return [];
+  return Array.isArray(data.milestones) ? data.milestones : [];
+}
+
 module.exports = {
   createUser, getUserByAlgoraId, getUserByEmail, countUsersByRole,
+  getMilestones,
   saveOTP, verifyOTP,
   getWalletAddress,
   createProposal, getProposal, updateProposalStatus, countProposals,

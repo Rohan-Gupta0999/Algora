@@ -186,8 +186,7 @@ const ProposePanel = (() => {
           </div>
           <div class="pp-section">
             <div class="pp-section-label">Recipient Details</div>
-            <div class="pp-field"><label class="pp-label">Recipient Full Name *</label><input class="pp-input" id="pp-rec-name" type="text" placeholder="e.g. NHAI Regional Office UP"></div>
-            <div class="pp-field"><label class="pp-label">Recipient Email *</label><input class="pp-input" id="pp-rec-email" type="email" placeholder="e.g. nhai.up@gov.in"></div>
+            <div class="pp-field"><label class="pp-label">Contractor Algora ID *</label><input class="pp-input" id="pp-rec-algoid" type="text" placeholder="e.g. CON-0001" style="text-transform:uppercase;letter-spacing:0.1em;"></div>
           </div>
           <div class="pp-section">
             <div class="pp-section-label">Transaction Details</div>
@@ -244,56 +243,50 @@ const ProposePanel = (() => {
 },
     _removeCoSigner(i) { coSigners.splice(i, 1); _renderCoSigners(); },
     async _submit() {
-      const err = document.getElementById('pp-error'), btn = document.getElementById('pp-submit-btn');
+      const err = document.getElementById('pp-error');
+      const btn = document.getElementById('pp-submit-btn');
       err.style.display = 'none';
-      const recName = document.getElementById('pp-rec-name').value.trim();
-      const recEmail = document.getElementById('pp-rec-email').value.trim().toLowerCase();
-      const amount = document.getElementById('pp-amount').value.trim();
-      const sector = document.getElementById('pp-sector').value;
-      const project = document.getElementById('pp-project').value.trim();
-      const note = document.getElementById('pp-note').value.trim() || 'No memo';
-      if (!recName || !recEmail || !amount || !project) { err.textContent = '❌ Please fill all required fields.'; err.style.display = 'block'; return; }
-      if (coSigners.length < 2) { err.textContent = '❌ Add at least 2 co-signatories.'; err.style.display = 'block'; return; }
+
+      const recAlgoId = (document.getElementById('pp-rec-algoid')?.value || '').trim().toUpperCase();
+      const amount    = (document.getElementById('pp-amount')?.value    || '').trim();
+      const project   = (document.getElementById('pp-project')?.value   || '').trim();
+
+      if (!recAlgoId || !recAlgoId.startsWith('CON-')) {
+        err.textContent = '❌ Contractor Algora ID required (must start with CON-)';
+        err.style.display = 'block'; return;
+      }
+      if (!amount || !project) {
+        err.textContent = '❌ Amount and Project are required.';
+        err.style.display = 'block'; return;
+      }
+      if (coSigners.length < 2) {
+        err.textContent = '❌ Add at least 2 co-signatories (GOV-MIN-XXXX).';
+        err.style.display = 'block'; return;
+      }
+
       btn.textContent = 'Submitting…'; btn.disabled = true;
-      const amtNum = parseFloat(amount.replace(/[^0-9.]/g, ''));
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
-      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) + ' IST';
-      const newId = 'PTX-' + Date.now().toString(36).toUpperCase();
-      const txData = { id: newId, project, sector: '📋 ' + sector, proposerName: window.currentUser?.name || '—', proposerEmail: window.currentUser?.email || '—', proposerWallet: window.currentUser?.wallet || '—', proposerGovId: window.currentUser?.govId || '—', proposerUid: window.currentUser?.uid || '—', recipient: { name: recName, email: recEmail, govId: 'GOV-' + Date.now().toString(36).toUpperCase(), wallet: 'PENDING' }, amount: '₹' + (amtNum >= 1e7 ? (amtNum/1e7).toFixed(2) + ' Cr' : amtNum.toLocaleString('en-IN')), amountRaw: amtNum, date: dateStr, time: timeStr, note, coSignerEmails: coSigners, threshold: coSigners.length + 1, total: coSigners.length + 1, signaturesGiven: [{ name: window.currentUser?.name, wallet: window.currentUser?.wallet, email: window.currentUser?.email, signedAt: dateStr + ' · ' + timeStr }], signerEmails: [window.currentUser?.email || ''], status: 'pending', createdAt: typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.serverTimestamp() : new Date() };
+
       try {
-  // Send to backend API
-const payload = {
-  proposerAlgoId:  window.currentUser?.govId,
-  proposerWallet:  window.currentUser?.wallet,
-  proposerName:    window.currentUser?.name,
-  proposerEmail:   window.currentUser?.email,
-  recipientName:   recName,
-  recipientEmail:  recEmail,
-  amount:          amtNum,
-  sector:          sector,
-  project:         project,
-  note:            note,
-  memberAlgoraIds: coSigners,    
-  threshold:       coSigners.length + 1,
-};
+        const res = await API.propose({
+          proposerAlgoId:    window.currentUser?.govId,
+          recipientAlgoraId: recAlgoId,
+          amount:            parseFloat(amount),
+          project:           project,
+          memberAlgoraIds:   coSigners,
+        });
 
-  const res = await API.propose(payload);
-  // res = { success: true, proposalId: 'PTX-...', message: '...' }
+        ProposePanel.close();
+        if (typeof showToast === 'function') {
+          showToast('📤 ' + res.proposalId + ' proposed — emails sent to ' + coSigners.length + ' co-signatories');
+        }
+        if (typeof loadPendingProposals === 'function') loadPendingProposals();
 
-  const finalId = (res && res.proposalId) ? res.proposalId : newId;
-  txData.id = finalId;
+      } catch(e) {
+        err.textContent = '❌ ' + e.message;
+        err.style.display = 'block';
+      }
 
-  if (typeof window.onProposeTxSubmit === 'function') window.onProposeTxSubmit(txData);
-  ProposePanel.close();
-  if (typeof showToast === 'function') {
-    showToast('📤 ' + finalId + ' proposed — emails sent to ' + coSigners.length + ' co-signatories');
-  }
-} catch(e) {
-  err.textContent = '❌ Failed: ' + e.message;
-  err.style.display = 'block';
-}
       btn.textContent = 'Propose Transaction →'; btn.disabled = false;
     }
-  };
-})();
+          };
+        })();
