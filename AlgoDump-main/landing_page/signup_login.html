@@ -1041,18 +1041,23 @@ async function doResendOtp() {
     curY = curY + (target.y - curY) * lf;
 
     // Angle: point toward target, smoothed
-    const dx = target.x - curX;
-    const dy = target.y - curY;
-    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-      const raw  = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-      const diff = ((raw - curAngle + 540) % 360) - 180;
-      curAngle  += diff * lf * 0.4;
-    }
+    // Use actual movement direction, not direction-to-target
+  if (trail.length >= 2) {
+  const prev = trail[trail.length - 2];
+  const curr = trail[trail.length - 1];
+  const dx = curr.x - prev.x;
+  const dy = curr.y - prev.y;
+  if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+    const raw  = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    const diff = ((raw - curAngle + 540) % 360) - 180;
+    curAngle += diff * 0.12;
+  }
+}
 
     // Move plane element
     planeWrap.style.left      = (curX - 30) + 'px';
     planeWrap.style.top       = (curY - 25) + 'px';
-    planeWrap.style.transform = `rotate(${curAngle}deg)`;
+    planeWrap.style.transform = `rotate(${curAngle + 135}deg)`;
 
     // Trail
     trail.push({ x: curX, y: curY });
