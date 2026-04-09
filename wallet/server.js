@@ -26,9 +26,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 1 — SIGN UP
-// Creates account + Algorand wallet automatically
-// Frontend sends:  { name, email, phone, password, role }
-// Server returns:  { success, algoraId, walletAddress, name, role }
 // ════════════════════════════════════════════════════════════
 app.post('/api/signup', async (req, res) => {
   try {
@@ -37,8 +34,8 @@ app.post('/api/signup', async (req, res) => {
       return res.status(400).json({ error: 'Please fill in all fields.' });
     }
     if (!['official', 'contractor', 'citizen'].includes(role)) {
-  return res.status(400).json({ error: 'Role must be official, contractor, or citizen.' });
-}
+      return res.status(400).json({ error: 'Role must be official, contractor, or citizen.' });
+    }
     const result = await signUpUser({ name, email, phone, password, role });
     res.json(result);
   } catch (err) {
@@ -49,9 +46,6 @@ app.post('/api/signup', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 2 — LOGIN STEP 1
-// Checks email + password, sends OTP to email
-// Frontend sends:  { email, password }
-// Server returns:  { success, message }
 // ════════════════════════════════════════════════════════════
 app.post('/api/login', async (req, res) => {
   try {
@@ -69,14 +63,11 @@ app.post('/api/login', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 3 — LOGIN STEP 2 (OTP VERIFY)
-// Verifies OTP — returns JWT token + full user object
-// Frontend sends:  { email, otp }  OR  { email, otpCode }
-// Server returns:  { success, token, user: { algoraId, name, role, walletAddress, email } }
 // ════════════════════════════════════════════════════════════
 app.post('/api/verify-otp', async (req, res) => {
   try {
     const email   = req.body.email;
-    const otpCode = req.body.otpCode || req.body.otp;  // accept both field names
+    const otpCode = req.body.otpCode || req.body.otp;
 
     if (!email || !otpCode) {
       return res.status(400).json({ error: 'Email and OTP required.' });
@@ -84,14 +75,12 @@ app.post('/api/verify-otp', async (req, res) => {
 
     const result = await loginStep2({ email, otpCode });
 
-    // Create JWT — stays valid for 7 days
     const token = jwt.sign(
       { algoraId: result.algoraId, role: result.role, email },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Return in the exact shape api.js and session-guard.js expect
     res.json({
       success: true,
       token,
@@ -112,9 +101,6 @@ app.post('/api/verify-otp', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 4 — GET WALLET INFO
-// Returns live wallet balance + address for the popup
-// Frontend sends:  GET /api/wallet/GOV-MIN-0001
-// Server returns:  { algoraId, name, walletAddress, tokenBalance, totalTransactions }
 // ════════════════════════════════════════════════════════════
 app.get('/api/wallet/:algoraId', async (req, res) => {
   try {
@@ -128,14 +114,76 @@ app.get('/api/wallet/:algoraId', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 5 — GET ALL PROPOSALS FOR A USER
-// Returns pending proposals where this user is a signer
-// Frontend sends:  GET /api/proposals?algoId=GOV-MIN-0001
-// Server returns:  { proposals: [...] }
 // ════════════════════════════════════════════════════════════
 app.get('/api/proposals', async (req, res) => {
   try {
-    const { algoId } = req.query;
+    const { algoId, all } = req.query;
     if (!algoId) return res.json({ proposals: [] });
+
+    if (all === 'true') {
+      // Return ALL proposals where this official is a member (any status)
+      const { supabase } = require('./config');
+      const { data: memberships } = await supabase
+        .from('multisig_members')
+        .select('multisig_address')
+        .eq('member_algora_id', algoId);
+
+      if (!memberships || memberships.length === 0) return res.json({ proposals: [] });
+
+      const addresses = memberships.map(m => m.multisig_address);
+      const { data: proposals } = await supabase
+        .from('proposals')
+        .select('*')
+        .in('multisig_address', addresses)
+        .order('proposal_id', { ascending: false });
+
+      // Deduplicate by proposal_id
+      const seen   = new Set();
+      const unique = (proposals || []).filter(p => {
+        if (seen.has(p.proposal_id)) return false;
+        seen.add(p.proposal_id);
+        return true;
+      });
+
+      // Enrich with signed counts + whether THIS user has signed
+      const { supabase: sb } = require('./config');
+      const enriched = await Promise.all(unique.map(async p => {
+
+        // How many members have signed this proposal's multisig wallet
+        const { count } = await sb
+          .from('multisig_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('multisig_address', p.multisig_address)
+          .eq('has_signed', true);
+
+        // Threshold required
+        const { data: mw } = await sb
+          .from('multisig_wallets')
+          .select('threshold')
+          .eq('multisig_address', p.multisig_address)
+          .single();
+
+        // ── FIX: Check if THIS specific user has already signed ──────────
+        const { data: myRow } = await sb
+          .from('multisig_members')
+          .select('has_signed')
+          .eq('multisig_address', p.multisig_address)
+          .eq('member_algora_id', algoId)
+          .single();
+        // ─────────────────────────────────────────────────────────────────
+
+        return {
+          ...p,
+          signed_count:    count || 0,
+          threshold:       mw?.threshold || '?',
+          you_have_signed: myRow?.has_signed || false  // NEW FIELD
+        };
+      }));
+
+      return res.json({ proposals: enriched });
+    }
+
+    // Default: pending proposals only (proposals this user hasn't signed yet)
     const proposals = await getPendingProposalsForOfficial(algoId);
     res.json({ proposals: proposals || [] });
   } catch (err) {
@@ -143,8 +191,8 @@ app.get('/api/proposals', async (req, res) => {
   }
 });
 
+
 // GET /api/contractor-proposals?algoId=CON-0001
-// Returns all proposals where this contractor is the recipient
 app.get('/api/contractor-proposals', async (req, res) => {
   try {
     const { algoId } = req.query;
@@ -160,14 +208,10 @@ app.get('/api/contractor-proposals', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 6 — PROPOSE A TRANSACTION
-// Minister creates a new multisig proposal
-// Frontend sends payload with memberAlgoraIds array
-// Server returns:  { proposalId, multisigAddress, threshold, message }
 // ════════════════════════════════════════════════════════════
 app.post('/api/propose', async (req, res) => {
   try {
-    // Map frontend field names to what multisigSystem.js expects
-    const body = req.body;
+    const body    = req.body;
     const payload = {
       proposerAlgoraId:  body.proposerAlgoId  || body.proposerAlgoraId,
       proposerPassword:  body.password        || body.proposerPassword || '',
@@ -187,9 +231,6 @@ app.post('/api/propose', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 7 — SIGN A PROPOSAL
-// Minister approves a pending proposal
-// Frontend sends:  { signerAlgoraId, signerPassword, proposalId }
-// Server returns:  { signed, thresholdReached, message, txHash }
 // ════════════════════════════════════════════════════════════
 app.post('/api/sign', async (req, res) => {
   try {
@@ -203,8 +244,6 @@ app.post('/api/sign', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 8 — GET PROPOSAL DETAILS
-// Returns full details of one proposal including signing status
-// Frontend sends:  GET /api/proposal/PROP-0001
 // ════════════════════════════════════════════════════════════
 app.get('/api/proposal/:proposalId', async (req, res) => {
   try {
@@ -218,8 +257,6 @@ app.get('/api/proposal/:proposalId', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 9 — SEND TOKENS
-// Transfers ALGR tokens between wallets
-// Frontend sends:  { senderAlgoraId, senderPassword, recipientAddress, amount }
 // ════════════════════════════════════════════════════════════
 app.post('/api/send-tokens', async (req, res) => {
   try {
@@ -234,7 +271,6 @@ app.post('/api/send-tokens', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════
 // ROUTE 10 — HEALTH CHECK
-// Open http://localhost:3000/api/health to confirm server is up
 // ════════════════════════════════════════════════════════════
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Algora wallet server is running ✓', time: new Date().toISOString() });

@@ -268,7 +268,7 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
   <div class="nav-center"><div class="nav-portal-pill"><div class="portal-dot"></div>Official Portal</div></div>
   <div class="nav-right">
     <div class="nav-icon-btn" onclick="openPropose()">📤<span class="tip">Propose Tx</span></div>
-    <div class="nav-icon-btn" onclick="openWallet()">💼<span class="tip">Wallet</span><span class="nav-badge" id="nav-badge">3</span></div>
+    <div class="nav-icon-btn" onclick="openWallet()">💼<span class="tip">Wallet</span><span class="nav-badge" id="nav-badge"></span></div>
   </div>
 </nav>
 
@@ -278,12 +278,12 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
       <div class="identity-left">
         <div class="gov-id-block">
           <span class="gov-id-prefix">Gov&nbsp;ID</span>
-          <span class="gov-id-value" id="gov-id-val">UP-PWD-2019-001</span>
+          <span class="gov-id-value" id="gov-id-val">—</span>
           <span class="gov-id-ok">Verified</span>
         </div>
         <div class="identity-card">
-          <div class="official-name" id="off-name">Rajiv Kumar Sharma</div>
-          <div class="official-desig" id="off-desig">Principal Secretary, Public Works Department<br>Government of Uttar Pradesh · Lucknow</div>
+          <div class="official-name" id="off-name">—</div>
+          <div class="official-desig" id="off-desig">—</div>
           <div class="identity-tags">
             <div class="id-tag">Department &nbsp;<strong>Public Works</strong></div>
             <div class="id-tag">State &nbsp;<strong>Uttar Pradesh</strong></div>
@@ -293,7 +293,7 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
           <div class="wallet-row">
             <div>
               <div class="wallet-lbl">Wallet Address</div>
-              <div class="wallet-addr" id="wallet-addr">ALGOP7XNKAG3FVKRD2PWNTQYMHZUOE6B4NCJKSDAXP9RQILVWB5TEKCQ7YXI</div>
+              <div class="wallet-addr" id="wallet-addr">—</div>
             </div>
             <div class="wallet-ok">Connected</div>
           </div>
@@ -302,7 +302,7 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
       <div class="identity-right">
         <div class="stat-card"><div class="stat-tag">All Time</div><div class="stat-lbl">Total Funds Managed</div><div class="stat-val" id="s-all">—</div><div class="stat-sub">Across <span id="s-cnt">—</span> signed transactions</div></div>
         <div class="stat-card"><div class="stat-tag">FY 2024-25</div><div class="stat-lbl">This Fiscal Year</div><div class="stat-val gn" id="s-fy">—</div><div class="stat-sub">Apr 2024 – Mar 2025 · <span id="s-fyc">—</span> transactions</div></div>
-        <div class="stat-card"><div class="stat-tag">Multisig</div><div class="stat-lbl">Pending Approvals</div><div class="stat-val gd" id="s-pend">—</div><div class="stat-sub" id="s-pend-sub">—</div></div>
+        <div class="stat-card"><div class="stat-tag">Multisig</div><div class="stat-lbl">Pending Approvals</div><div class="stat-val gd" id="s-pend">—</div><div class="stat-sub" id="s-pend-sub">Loading…</div></div>
       </div>
     </div>
   </section>
@@ -312,9 +312,9 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
       <div><div class="tx-eyebrow">On-Chain Ledger</div><div class="tx-title">Transaction History</div></div>
       <div class="chain-badge"><div class="chain-dot"></div>Algorand Mainnet · Live</div>
     </div>
-    <div class="pending-strip" id="pstrip" onclick="jumpPending()">
+    <div class="pending-strip" id="pstrip" style="display:none;" onclick="jumpPending()">
       <div class="ps-left"><div class="ps-icon">✍️</div><div><div class="ps-title">Action Required</div><div class="ps-sub">Unsigned transactions awaiting your multisig approval</div></div></div>
-      <div style="display:flex;align-items:center;gap:12px;"><div class="ps-pill" id="ps-pill">3 Pending</div><div class="ps-arrow">→</div></div>
+      <div style="display:flex;align-items:center;gap:12px;"><div class="ps-pill" id="ps-pill">0 Pending</div><div class="ps-arrow">→</div></div>
     </div>
     <div class="tx-filters">
       <button class="tx-filter active" onclick="filterTx('all',this)">All</button>
@@ -378,58 +378,71 @@ footer{position:relative;z-index:100;text-align:center;padding:60px 20px 80px;bo
   };
 })();
 
-window.addEventListener('DOMContentLoaded', () => { renderIdentity(); renderTx(); startBtp(); });
-const TXD=[
-  {hash:'0x4f9a...2c81',project:'NH-58 Road Widening Phase 2',recipient:'NHAI Regional Office UP',from:'ALGOP7XCGOV...4F12',to:'ALGOP7XNHAI...3B22',sector:'infra',sL:'🏗️ Infrastructure',amt:840,amtS:'₹840 Cr',date:'13 Mar 2025',sigs:'2/3',full:false,status:'pending',fy:true},
-  {hash:'0x7e2b...5d94',project:'Gorakhpur Link Expressway — Land Acq.',recipient:'UP Revenue Dept.',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XUPRD...9C44',sector:'infra',sL:'🏗️ Infrastructure',amt:1200,amtS:'₹1,200 Cr',date:'12 Mar 2025',sigs:'1/3',full:false,status:'pending',fy:true},
-  {hash:'0x3c1d...9f22',project:'Smart City Road Network Phase-2',recipient:'Lucknow Smart City Ltd.',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XLSCL...7F11',sector:'infra',sL:'🏗️ Infrastructure',amt:320,amtS:'₹320 Cr',date:'11 Mar 2025',sigs:'2/3',full:false,status:'pending',fy:true},
-  {hash:'0x8a3f...1b99',project:'Purvanchal Expressway Phase-3 · Tranche 1',recipient:'UPEIDA Ltd',from:'ALGOP7XCGOV...4F12',to:'ALGOP7XUPEI...8D99',sector:'infra',sL:'🏗️ Infrastructure',amt:350,amtS:'₹350 Cr',date:'10 Mar 2025',sigs:'3/3',full:true,status:'confirmed',fy:true},
-  {hash:'0x2d8c...4e71',project:'NH Division Expansion · Batch A',recipient:'NHAI Regional UP',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XNHDU...6C55',sector:'infra',sL:'🏗️ Infrastructure',amt:280,amtS:'₹280 Cr',date:'08 Mar 2025',sigs:'3/3',full:true,status:'confirmed',fy:true},
-  {hash:'0x9f1a...7c33',project:'Agra-Lucknow Expressway Widening',recipient:'UPEIDA Ltd',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XUPEI...8D99',sector:'infra',sL:'🏗️ Infrastructure',amt:190,amtS:'₹190 Cr',date:'06 Mar 2025',sigs:'3/3',full:true,status:'confirmed',fy:true},
-  {hash:'0x5b2e...8d14',project:'Urban Road Connectivity Phase-1',recipient:'LDA Lucknow',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XLDAL...5D33',sector:'infra',sL:'🏗️ Infrastructure',amt:95,amtS:'₹95 Cr',date:'04 Mar 2025',sigs:'3/3',full:true,status:'confirmed',fy:true},
-  {hash:'0x1c8a...6d52',project:'Flyover Construction · Ring Road Node-4',recipient:'IL&FS Engineering Ltd',from:'ALGOP7XCGOV...4F12',to:'ALGOP7XILFS...7R22',sector:'infra',sL:'🏗️ Infrastructure',amt:412,amtS:'₹412 Cr',date:'01 Mar 2025',sigs:'3/3',full:true,status:'confirmed',fy:false},
-  {hash:'0x7a1f...3c29',project:'Bridge Repair · Gomti River Batch',recipient:'UP Bridges Corp.',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XUPBC...3A88',sector:'infra',sL:'🏗️ Infrastructure',amt:67,amtS:'₹67 Cr',date:'28 Feb 2025',sigs:'3/3',full:true,status:'confirmed',fy:false},
-  {hash:'0x4e8c...2f71',project:'Smart City Road Network Phase-1 Final',recipient:'Lucknow Smart City Ltd.',from:'ALGOP7XUPSG...3A11',to:'ALGOP7XLSCL...7F11',sector:'infra',sL:'🏗️ Infrastructure',amt:180,amtS:'₹180 Cr',date:'25 Feb 2025',sigs:'3/3',full:true,status:'confirmed',fy:false},
-];
-window.OFF_TX_HISTORY=TXD.filter(t=>t.status==='confirmed').map(t=>({hash:t.hash,project:t.project,recipient:t.recipient,amount:t.amtS,date:t.date,time:'',status:'confirmed'}));
-window.PENDING_TXS=TXD.filter(t=>t.status==='pending').map(t=>({id:t.hash,youSigned:false}));
-
-function renderIdentity(){
-  const u=window.currentUser;
-  document.getElementById('gov-id-val').textContent=u.govId;
-  document.getElementById('wallet-addr').textContent=u.wallet;
-  document.getElementById('bdd-name').textContent=u.name;
-  document.getElementById('pf-name').value=u.name;
-  document.getElementById('pf-govid').value=u.govId;
-  document.getElementById('pf-email').value=u.email||'';
-  const all=TXD.reduce((s,t)=>s+t.amt,0);
-  const fy=TXD.filter(t=>t.fy).reduce((s,t)=>s+t.amt,0);
-  const pend=TXD.filter(t=>t.status==='pending').length;
-  const fmt=n=>'₹'+n.toLocaleString('en-IN')+' CR';
-  document.getElementById('s-all').textContent=fmt(all);
-  document.getElementById('s-fy').textContent=fmt(fy);
-  document.getElementById('s-pend').textContent=pend;
-  document.getElementById('s-cnt').textContent=TXD.length;
-  document.getElementById('s-fyc').textContent=TXD.filter(t=>t.fy).length;
-  document.getElementById('s-pend-sub').textContent=pend+' transaction'+(pend!==1?'s':'')+' awaiting your signature';
-  document.getElementById('nav-badge').textContent=pend;
-  document.getElementById('ps-pill').textContent=pend+' Pending';
-  document.getElementById('pstrip').style.display=pend>0?'flex':'none';
+// ── FIX 1: renderIdentity only fills in identity fields.
+//           Stats are set to "—" until the real API responds.
+//           The pending strip is hidden until loadPendingProposals() runs.
+function renderIdentity() {
+  const u = window.currentUser;
+  document.getElementById('gov-id-val').textContent  = u.govId;
+  document.getElementById('wallet-addr').textContent = u.wallet;
+  document.getElementById('bdd-name').textContent    = u.name;
+  document.getElementById('pf-name').value           = u.name;
+  document.getElementById('pf-govid').value          = u.govId;
+  document.getElementById('pf-email').value          = u.email || '';
+  // Stats stay as "—" — loadPendingProposals() and loadRealStats() will fill them.
+  document.getElementById('pstrip').style.display = 'none';
+  document.getElementById('nav-badge').textContent   = '';
 }
 
-let cf='all';
-function filterTx(f,b){
-  cf=f;
-  document.querySelectorAll('.tx-filter').forEach(x=>x.classList.remove('active'));
+// ── FIX 2: loadRealStats computes Total Funds Managed and FY totals
+//           from real approved proposals in the DB — not from fake TXD array.
+async function loadRealStats() {
+  const algoId = window.currentUser?.govId;
+  if (!algoId || algoId === '—') return;
+  try {
+    const res  = await fetch('http://localhost:3000/api/proposals?algoId=' + algoId + '&all=true');
+    const data = await res.json();
+    const proposals = data.proposals || [];
+
+    // Only count approved (completed) proposals for "funds managed"
+    const approved = proposals.filter(p => p.status === 'approved');
+    const totalFunds = approved.reduce((sum, p) => sum + Number(p.token_amount || 0), 0);
+
+    // FY 2024-25: Apr 1 2024 – Mar 31 2025
+    // Use created_at if available, otherwise fall back to all approved
+    const fyStart = new Date('2024-04-01').getTime();
+    const fyEnd   = new Date('2025-03-31T23:59:59').getTime();
+    const fyApproved = approved.filter(p => {
+      if (!p.created_at) return true; // no date → include in FY bucket as fallback
+      const t = new Date(p.created_at).getTime();
+      return t >= fyStart && t <= fyEnd;
+    });
+    const fyFunds = fyApproved.reduce((sum, p) => sum + Number(p.token_amount || 0), 0);
+
+    const fmt = n => '₹' + Number(n).toLocaleString('en-IN') + ' ALGR';
+
+    document.getElementById('s-all').textContent = fmt(totalFunds);
+    document.getElementById('s-cnt').textContent = approved.length;
+    document.getElementById('s-fy').textContent  = fmt(fyFunds);
+    document.getElementById('s-fyc').textContent = fyApproved.length;
+  } catch (e) {
+    console.log('Could not load real stats:', e.message);
+  }
+}
+
+let cf = 'all';
+function filterTx(f, b) {
+  cf = f;
+  document.querySelectorAll('.tx-filter').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   loadTxHistory();
 }
-function renderTx(){
- loadTxHistory();
-}
 
 function toggleDD(){document.getElementById('brand-dd').classList.toggle('open');}
-document.addEventListener('click',e=>{if(!document.getElementById('nav-brand').contains(e.target))document.getElementById('brand-dd').classList.remove('open');});
+document.addEventListener('click', e => {
+  if (!document.getElementById('nav-brand').contains(e.target))
+    document.getElementById('brand-dd').classList.remove('open');
+});
 
 function openPlate(id){document.getElementById('brand-dd').classList.remove('open');document.getElementById(id).classList.add('open');document.getElementById('page-dim').classList.add('active');}
 function closePlate(id){document.getElementById(id).classList.remove('open');checkDim();}
@@ -448,41 +461,61 @@ const _ppc=ProposePanel.close.bind(ProposePanel);ProposePanel.close=function(){_
 const _wpc=WalletPanel.close.bind(WalletPanel);WalletPanel.close=function(){_wpc();setTimeout(checkDim,440);};
 function jumpPending(){const b=document.querySelectorAll('.tx-filter')[6];filterTx('pending',b);document.querySelector('.tx-section').scrollIntoView({behavior:'smooth'});}
 
-window.showToast=function(msg){const t=document.getElementById('algora-toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);};
+window.showToast = function(msg){
+  const t = document.getElementById('algora-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+};
 
-const ltx=TXD.filter(t=>t.amt>=100);let _bi=0,_bt=null;
+// Big-tx alert — still uses a small local set just for the floating alert banner
+// (this is UI-only eye-candy, not the real stats)
+const BTP_DEMO = [
+  {amtS:'₹2,98,88,868 ALGR', sL:'🏛️ Multisig', project:'NH-80 Road Widening', hash:'PROP-0003'},
+  {amtS:'₹20,00,000 ALGR',   sL:'🏛️ Multisig', project:'NH-58 Phase 2',        hash:'PROP-0002'},
+];
+let _bi = 0, _bt = null;
 function showBtp(t){document.getElementById('btp-amt').textContent=t.amtS;document.getElementById('btp-desc').innerHTML=t.sL+'<br>'+t.project.slice(0,50);document.getElementById('btp-hash').textContent='TX: '+t.hash;document.getElementById('btp').classList.add('show');clearTimeout(_bt);_bt=setTimeout(closeBtp,8000);}
 function closeBtp(){document.getElementById('btp').classList.remove('show');}
-function startBtp(){if(!ltx.length)return;function n(){showBtp(ltx[_bi%ltx.length]);_bi++;setTimeout(n,30000+Math.random()*18000);}setTimeout(n,10000);}
+function startBtp(){if(!BTP_DEMO.length)return;function n(){showBtp(BTP_DEMO[_bi%BTP_DEMO.length]);_bi++;setTimeout(n,30000+Math.random()*18000);}setTimeout(n,10000);}
 
-window.addEventListener('DOMContentLoaded',()=>{renderIdentity();startBtp();loadPendingProposals();loadTxHistory();});
-// ── REAL PENDING PROPOSALS ────────────────────────────────────────────────
+// ── On page load: render identity fields, then fire all real API calls
+window.addEventListener('DOMContentLoaded', () => {
+  renderIdentity();
+  startBtp();
+  loadPendingProposals(); // fills pending count + pending list
+  loadTxHistory();        // fills transaction history table
+  loadRealStats();        // fills Total Funds Managed + FY stats
+});
+
+// ── PENDING PROPOSALS (top section — only proposals needing YOUR signature) ──
 let activePropId = null;
 
 async function loadPendingProposals() {
   const algoId = window.currentUser?.govId;
   if (!algoId || algoId === '—') return;
   try {
-    const res = await fetch('http://localhost:3000/api/proposals?algoId=' + algoId);
+    const res  = await fetch('http://localhost:3000/api/proposals?algoId=' + algoId);
     const data = await res.json();
     const proposals = data.proposals || [];
 
-    // Update counts
+    // ── FIX 3: pending count comes from real API, not hardcoded TXD
     const pend = proposals.length;
-    document.getElementById('s-pend').textContent = pend;
-    document.getElementById('nav-badge').textContent = pend || '';
-    document.getElementById('ps-pill').textContent = pend + ' Pending';
-    document.getElementById('pstrip').style.display = pend > 0 ? 'flex' : 'none';
+    document.getElementById('s-pend').textContent     = pend;
+    document.getElementById('nav-badge').textContent  = pend > 0 ? pend : '';
+    document.getElementById('ps-pill').textContent    = pend + ' Pending';
+    document.getElementById('pstrip').style.display   = pend > 0 ? 'flex' : 'none';
     document.getElementById('s-pend-sub').textContent =
       pend + ' proposal' + (pend !== 1 ? 's' : '') + ' awaiting your signature';
 
-    // Render in the real-pending div
     const list = document.getElementById('real-pending-list');
     if (!list) return;
+
     if (proposals.length === 0) {
       list.innerHTML = '<div style="padding:28px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;letter-spacing:0.08em;">No pending proposals for your approval</div>';
       return;
     }
+
     list.innerHTML = proposals.map(p => `
       <div class="tx-row" onclick="openSignPlate('${p.proposalId}')" style="border-left:2px solid var(--red);">
         <div class="tx-hash">${p.proposalId}</div>
@@ -498,29 +531,35 @@ async function loadPendingProposals() {
   }
 }
 
+// ── FIX 1 (continued): Transaction History — excludes pending proposals
+//    because they are already shown in the pending section above.
+//    Only shows them if the user explicitly clicks the "Pending Sig." filter.
 async function loadTxHistory() {
   const algoId = window.currentUser?.govId;
   if (!algoId || algoId === '—') return;
   const c = document.getElementById('tx-rows');
   if (!c) return;
-  try {
-    // fetch ALL proposals this official is involved in (as proposer or member)
-    const [myRes, allRes] = await Promise.all([
-      fetch('http://localhost:3000/api/proposals?algoId=' + algoId).then(r => r.json()),
-      fetch('http://localhost:3000/api/proposals?algoId=' + algoId + '&all=true').then(r => r.json())
-    ]);
 
-    // We'll use the proposals endpoint — it returns all for this official
-    const proposals = myRes.proposals || [];
+  try {
+    const res  = await fetch('http://localhost:3000/api/proposals?algoId=' + algoId + '&all=true');
+    const data = await res.json();
+    const proposals = data.proposals || [];
 
     if (proposals.length === 0) {
-      c.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;letter-spacing:0.1em;">No transactions yet. Propose one using the 📤 button above.</div>';
+      c.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;letter-spacing:0.1em;">No transactions yet.</div>';
       return;
     }
 
-    // Apply filter
-    let filtered = proposals;
-    if (cf === 'pending') filtered = proposals.filter(p => !p.youHaveSigned);
+    // ── KEY FIX: by default hide pending proposals from history table —
+    //    they already appear in the "real-pending-list" section above.
+    //    Only show pending ones here if the user clicks "Pending Sig." filter.
+    let filtered;
+    if (cf === 'pending') {
+      filtered = proposals.filter(p => p.status === 'pending');
+    } else {
+      // "all" and other filters: only show approved (completed) proposals
+      filtered = proposals.filter(p => p.status === 'approved');
+    }
 
     if (filtered.length === 0) {
       c.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;">No transactions match this filter.</div>';
@@ -528,34 +567,36 @@ async function loadTxHistory() {
     }
 
     c.innerHTML = filtered.map(p => {
-      const isFull    = p.signedCount >= p.threshold;
-      const statusCls = isFull ? 'confirmed' : 'pending';
-      const statusLbl = isFull ? '⬤ Approved' : '◎ Pending';
+      const isApproved = p.status === 'approved';
+      const sigCount   = p.signed_count || 0;
+      const threshold  = p.threshold    || '?';
+      const statusCls  = isApproved ? 'confirmed' : 'pending';
+      const statusLbl  = isApproved ? '⬤ Approved' : '◎ Pending';
       return `
-        <div class="tx-row${p.tokenAmount >= 1e7 ? ' atx' : ''}" onclick="openSignPlate('${p.proposalId}')">
-          <div class="tx-hash" style="font-size:11px;">${p.proposalId}</div>
+        <div class="tx-row${Number(p.token_amount) >= 1e7 ? ' atx' : ''}" onclick="openSignPlate('${p.proposal_id}')">
+          <div class="tx-hash" style="font-size:11px;">${p.proposal_id}</div>
           <div>
-            <div class="tx-proj">${p.projectName}</div>
-            <div class="tx-recp">→ ${p.recipientId}</div>
+            <div class="tx-proj">${p.project_name}</div>
+            <div class="tx-recp">→ ${p.recipient_algora_id}</div>
           </div>
           <div><span class="sec-chip">🏛️ Multisig</span></div>
-          <div class="tx-amt al">₹${Number(p.tokenAmount).toLocaleString('en-IN')}</div>
-          <div class="tx-dt">${p.proposedBy}</div>
-          <div><span class="sig-pill${isFull ? ' full' : ''}">${p.signedCount}/${p.threshold}</span></div>
+          <div class="tx-amt al">₹${Number(p.token_amount).toLocaleString('en-IN')}</div>
+          <div class="tx-dt">${p.proposer_algora_id}</div>
+          <div><span class="sig-pill${isApproved ? ' full' : ''}">${sigCount}/${threshold}</span></div>
           <div><span class="st-chip ${statusCls}">${statusLbl}</span></div>
         </div>`;
     }).join('');
 
   } catch(e) {
-    c.innerHTML = '<div style="padding:28px;text-align:center;color:rgba(220,38,38,0.5);font-size:12px;">Could not load transactions: ' + e.message + '</div>';
+    c.innerHTML = '<div style="padding:28px;text-align:center;color:rgba(220,38,38,0.5);font-size:12px;">Could not load: ' + e.message + '</div>';
   }
 }
 
 async function openSignPlate(proposalId) {
   activePropId = proposalId;
   try {
-    const res  = await fetch('http://localhost:3000/api/proposal/' + proposalId);
-    const p    = await res.json();
+    const res = await fetch('http://localhost:3000/api/proposal/' + proposalId);
+    const p   = await res.json();
     document.getElementById('sign-details').innerHTML = `
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(220,38,38,0.2);
                   border-radius:10px;padding:16px;font-size:13px;line-height:1.9;">
@@ -570,10 +611,10 @@ async function openSignPlate(proposalId) {
   } catch(e) {
     document.getElementById('sign-details').textContent = 'Could not load proposal details.';
   }
-  document.getElementById('sign-pw').value = '';
+  document.getElementById('sign-pw').value  = '';
   document.getElementById('sign-msg').style.display = 'none';
-  document.getElementById('sign-btn').textContent = '✍️ Sign This Proposal →';
-  document.getElementById('sign-btn').disabled = false;
+  document.getElementById('sign-btn').textContent   = '✍️ Sign This Proposal →';
+  document.getElementById('sign-btn').disabled      = false;
   openPlate('pl-sign');
 }
 
@@ -605,6 +646,8 @@ async function doSignProposal() {
     setTimeout(() => {
       closePlate('pl-sign');
       loadPendingProposals();
+      loadTxHistory();
+      loadRealStats();
       if (res.thresholdReached) showToast('🎉 Tokens transferred! TX: ' + res.txHash);
     }, res.thresholdReached ? 3000 : 1500);
   } catch(e) {
