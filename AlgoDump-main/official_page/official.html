@@ -418,12 +418,14 @@ function renderIdentity(){
 }
 
 let cf='all';
-function filterTx(f,b){cf=f;document.querySelectorAll('.tx-filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTx();}
+function filterTx(f,b){
+  cf=f;
+  document.querySelectorAll('.tx-filter').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  loadTxHistory();
+}
 function renderTx(){
-  const rows=TXD.filter(t=>{if(cf==='all')return true;if(cf==='large')return t.amt>=100;if(cf==='pending')return t.status==='pending';return t.sector===cf;});
-  const c=document.getElementById('tx-rows');
-  if(!rows.length){c.innerHTML='<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;font-weight:300;letter-spacing:0.1em;">No transactions match this filter</div>';return;}
-  c.innerHTML=rows.map(t=>{const il=t.amt>=100;return`<div class="tx-row${il?' atx':''}"><div class="tx-hash">${t.hash}</div><div><div class="tx-proj">${t.project.length>38?t.project.slice(0,38)+'…':t.project}</div><div class="tx-recp">→ ${t.recipient}</div><div class="tx-addr">${t.from} ↗ ${t.to}</div></div><div><span class="sec-chip">${t.sL}</span></div><div class="tx-amt${il?' al':''}">${t.amtS}</div><div class="tx-dt">${t.date}</div><div><span class="sig-pill${t.full?' full':''}">${t.sigs}</span></div><div><span class="st-chip ${t.status}">${t.status==='confirmed'?'⬤ Confirmed':'◎ Pending'}</span></div></div>`;}).join('');
+ loadTxHistory();
 }
 
 function toggleDD(){document.getElementById('brand-dd').classList.toggle('open');}
@@ -453,7 +455,7 @@ function showBtp(t){document.getElementById('btp-amt').textContent=t.amtS;docume
 function closeBtp(){document.getElementById('btp').classList.remove('show');}
 function startBtp(){if(!ltx.length)return;function n(){showBtp(ltx[_bi%ltx.length]);_bi++;setTimeout(n,30000+Math.random()*18000);}setTimeout(n,10000);}
 
-window.addEventListener('DOMContentLoaded',()=>{renderIdentity();renderTx();startBtp();loadPendingProposals();});
+window.addEventListener('DOMContentLoaded',()=>{renderIdentity();startBtp();loadPendingProposals();loadTxHistory();});
 // ── REAL PENDING PROPOSALS ────────────────────────────────────────────────
 let activePropId = null;
 
@@ -493,6 +495,59 @@ async function loadPendingProposals() {
       </div>`).join('');
   } catch(e) {
     console.log('Could not load proposals:', e.message);
+  }
+}
+
+async function loadTxHistory() {
+  const algoId = window.currentUser?.govId;
+  if (!algoId || algoId === '—') return;
+  const c = document.getElementById('tx-rows');
+  if (!c) return;
+  try {
+    // fetch ALL proposals this official is involved in (as proposer or member)
+    const [myRes, allRes] = await Promise.all([
+      fetch('http://localhost:3000/api/proposals?algoId=' + algoId).then(r => r.json()),
+      fetch('http://localhost:3000/api/proposals?algoId=' + algoId + '&all=true').then(r => r.json())
+    ]);
+
+    // We'll use the proposals endpoint — it returns all for this official
+    const proposals = myRes.proposals || [];
+
+    if (proposals.length === 0) {
+      c.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;letter-spacing:0.1em;">No transactions yet. Propose one using the 📤 button above.</div>';
+      return;
+    }
+
+    // Apply filter
+    let filtered = proposals;
+    if (cf === 'pending') filtered = proposals.filter(p => !p.youHaveSigned);
+
+    if (filtered.length === 0) {
+      c.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px;">No transactions match this filter.</div>';
+      return;
+    }
+
+    c.innerHTML = filtered.map(p => {
+      const isFull    = p.signedCount >= p.threshold;
+      const statusCls = isFull ? 'confirmed' : 'pending';
+      const statusLbl = isFull ? '⬤ Approved' : '◎ Pending';
+      return `
+        <div class="tx-row${p.tokenAmount >= 1e7 ? ' atx' : ''}" onclick="openSignPlate('${p.proposalId}')">
+          <div class="tx-hash" style="font-size:11px;">${p.proposalId}</div>
+          <div>
+            <div class="tx-proj">${p.projectName}</div>
+            <div class="tx-recp">→ ${p.recipientId}</div>
+          </div>
+          <div><span class="sec-chip">🏛️ Multisig</span></div>
+          <div class="tx-amt al">₹${Number(p.tokenAmount).toLocaleString('en-IN')}</div>
+          <div class="tx-dt">${p.proposedBy}</div>
+          <div><span class="sig-pill${isFull ? ' full' : ''}">${p.signedCount}/${p.threshold}</span></div>
+          <div><span class="st-chip ${statusCls}">${statusLbl}</span></div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    c.innerHTML = '<div style="padding:28px;text-align:center;color:rgba(220,38,38,0.5);font-size:12px;">Could not load transactions: ' + e.message + '</div>';
   }
 }
 

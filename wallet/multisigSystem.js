@@ -96,6 +96,7 @@ async function proposeTransaction({
   });
   console.log(`Multisig wallet ${multisigAddress} saved`);
 
+  await db.clearMultisigMembers(multisigAddress); // wipe stale members first
   for (const member of memberData) {
     await db.addMultisigMember({
       multisig_address:      multisigAddress,

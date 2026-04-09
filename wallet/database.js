@@ -135,7 +135,7 @@ async function countProposals() {
 async function createMultisigWallet(walletData) {
   const { data, error } = await supabase
     .from('multisig_wallets')
-    .insert([walletData])
+    .upsert([walletData], { onConflict: 'multisig_address' })
     .select()
     .single();
   if (error) throw new Error('Could not create multisig: ' + error.message);
@@ -209,6 +209,13 @@ async function getMilestones(proposalId) {
   return Array.isArray(data.milestones) ? data.milestones : [];
 }
 
+async function clearMultisigMembers(multisigAddress) {
+  await supabase
+    .from('multisig_members')
+    .delete()
+    .eq('multisig_address', multisigAddress);
+}
+
 module.exports = {
   createUser, getUserByAlgoraId, getUserByEmail, countUsersByRole,
   getMilestones,
@@ -216,6 +223,6 @@ module.exports = {
   getWalletAddress,
   createProposal, getProposal, updateProposalStatus, countProposals,
   createMultisigWallet, getMultisigWallet,
-  addMultisigMember, getMember, markMemberSigned,
+  clearMultisigMembers, addMultisigMember, getMember, markMemberSigned,
   getSignedCount, getAllMembers, getSignedMembers
 };

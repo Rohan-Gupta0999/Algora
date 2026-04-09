@@ -946,7 +946,11 @@ async function doResendOtp() {
 
   if (!planeWrap || sections.length === 0) return;
 
-  // Canvas setup
+  // ── Force plane invisible immediately on load ───────────────
+  planeWrap.style.opacity   = '0';
+  planeWrap.style.transition = 'opacity 0.5s ease';
+
+  // ── Canvas ──────────────────────────────────────────────────
   let ctx, W, H;
   if (canvas) {
     ctx = canvas.getContext('2d');
@@ -955,51 +959,54 @@ async function doResendOtp() {
     window.addEventListener('resize', resize);
   }
 
-  // Trail
-  const trail = [];
-  const TRAIL_MAX = 60;
+  const trail     = [];
+  const TRAIL_MAX = 55;
 
-  // Smooth position state
-  let curX = window.innerWidth * 0.5;
-  let curY = window.innerHeight * 0.3;
+  // ── State — start completely off-screen ─────────────────────
+  let curX     = -500;
+  let curY     = -500;
+  let prevX    = -500;
+  let prevY    = -500;
   let curAngle = 0;
+  let wasInZone = false;
 
-  // Emoji positions — opposite side from section text
-  const emojiSide = [0.78, 0.22, 0.78, 0.22, 0.78]; // xFrac per section
+  // Emoji X positions (fraction of viewport width)
+  const emojiSide = [0.78, 0.22, 0.78, 0.22, 0.78];
 
-  // Compute target position from scroll progress
-  function getTarget() {
+  // ── Compute target position from scroll ─────────────────────
+    function getTarget() {
     const scrollY = window.scrollY;
     const vH      = window.innerHeight;
 
-    if (!sections[0] || !sections[sections.length - 1]) return null;
+    if (!sections[0]) return null;
 
-    const zoneTop = sections[0].offsetTop;
+    // getBoundingClientRect + scrollY = absolute document position
+    // offsetTop was giving position relative to #scroll-root (~72px), not document (~972px)
+    const zoneTop = sections[0].getBoundingClientRect().top + scrollY;
     const authEl  = document.getElementById('auth-section');
-    const authTop = authEl ? authEl.offsetTop : sections[sections.length - 1].offsetTop + vH;
+    const authTop = authEl
+      ? authEl.getBoundingClientRect().top + scrollY
+      : zoneTop + sections.length * vH;
 
-    // Hide plane outside sections zone
-    if (scrollY + vH < zoneTop + vH * 0.3 || scrollY > authTop - vH * 0.2) return null;
+    // Plane only appears after hero is fully scrolled past
+    const enterAt = zoneTop - vH * 0.5;
+    const exitAt  = authTop - vH * 0.25;
 
-    // Progress 0→1 through the 5 sections
+    if (scrollY < enterAt || scrollY > exitAt) return null;
+
     const progress = Math.max(0, Math.min(1,
-      (scrollY + vH * 0.5 - zoneTop) / (authTop - zoneTop - vH * 0.4)
+      (scrollY - enterAt) / (exitAt - enterAt)
     ));
 
-    // Sine S-wave path — one full wave across the 5 sections
-    const amp  = vH * 0.55;            // left-right swing in pixels from viewport center
-    const cx   = window.innerWidth * 0.5;
-    // Use sin so path starts center, swings right, crosses center, swings left, ends center
-    const tx   = cx + amp * Math.sin(progress * Math.PI * 2);
-    // Y moves top-to-bottom through the viewport
-    const padT = vH * 0.15;
-    const padB = vH * 0.15;
-    const ty   = padT + progress * (vH - padT - padB);
+    const amp = vH * 0.42;
+    const cx  = window.innerWidth * 0.5;
+    const tx  = cx + amp * Math.sin(progress * Math.PI * 2);
+    const ty  = vH * 0.15 + progress * (vH * 0.70);
 
-    return { x: tx, y: ty, progress };
+    return { x: tx, y: ty };
   }
 
-  // Update waypoint emoji positions
+  // ── Waypoint emojis ──────────────────────────────────────────
   function updateEmojis() {
     sections.forEach((sec, i) => {
       const node = wpNodes[i];
@@ -1016,45 +1023,73 @@ async function doResendOtp() {
     });
   }
 
-  // Main rAF loop
+  // ── Animation loop ───────────────────────────────────────────
   let lastTime = 0;
+
   function tick(now) {
     const dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime  = now;
 
     const target = getTarget();
 
+    // ── Outside zone: hide and reset ────────────────────────────
     if (!target) {
-      planeWrap.style.opacity = '0';
-      if (ctx) ctx.clearRect(0, 0, W, H);
-      trail.length = 0;
+      if (wasInZone) {
+        planeWrap.style.opacity = '0';
+        if (ctx) ctx.clearRect(0, 0, W, H);
+        trail.length = 0;
+        wasInZone = false;
+        // Push off-screen so next entry starts fresh
+        curX = -500; curY = -500;
+        prevX = -500; prevY = -500;
+      }
       updateEmojis();
       requestAnimationFrame(tick);
       return;
     }
 
-    planeWrap.style.opacity = '1';
+    // ── Entering zone: snap to target position instantly ────────
+    // Prevents the plane from flying in from off-screen
+    if (!wasInZone) {
+      curX  = target.x;
+      curY  = target.y;
+      prevX = target.x;
+      prevY = target.y;
+      planeWrap.style.transition = 'opacity 0.4s ease';
+      planeWrap.style.opacity    = '1';
+      wasInZone = true;
+    }
 
-    // Exponential lerp — smooth, float-like
-    const lf = 1 - Math.exp(-3.5 * dt);
+    // ── Save previous position for velocity-based angle ─────────
+    prevX = curX;
+    prevY = curY;
+
+    // ── Lerp toward target ───────────────────────────────────────
+    const lf = 1 - Math.exp(-3.8 * dt);
     curX = curX + (target.x - curX) * lf;
     curY = curY + (target.y - curY) * lf;
 
-    // Angle: point toward target, smoothed
-    const dx = target.x - curX;
-    const dy = target.y - curY;
-    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-      const raw  = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-      const diff = ((raw - curAngle + 540) % 360) - 180;
-      curAngle  += diff * lf * 0.4;
-    }
+    // ── Angle from VELOCITY, not from target delta ───────────────
+    // This prevents the flip when curPos ≈ target (delta → 0)
+    const vx    = curX - prevX;
+    const vy    = curY - prevY;
+    const speed = Math.sqrt(vx * vx + vy * vy);
 
-    // Move plane element
+    if (speed > 0.25) {
+      // +90 deg because the plane image points upward at 0 degrees
+      const raw  = Math.atan2(vy, vx) * (180 / Math.PI) + 90;
+      const diff = ((raw - curAngle + 540) % 360) - 180;
+      // Smooth but responsive — never snaps
+      curAngle += diff * lf * 0.55;
+    }
+    // Below speed threshold: hold last angle (no jitter)
+
+    // ── Position plane element ───────────────────────────────────
     planeWrap.style.left      = (curX - 30) + 'px';
     planeWrap.style.top       = (curY - 25) + 'px';
     planeWrap.style.transform = `rotate(${curAngle}deg)`;
 
-    // Trail
+    // ── Trail ────────────────────────────────────────────────────
     trail.push({ x: curX, y: curY });
     if (trail.length > TRAIL_MAX) trail.shift();
 
@@ -1065,14 +1100,14 @@ async function doResendOtp() {
         ctx.beginPath();
         ctx.moveTo(trail[i-1].x, trail[i-1].y);
         ctx.lineTo(trail[i].x,   trail[i].y);
-        ctx.strokeStyle = `rgba(220,38,38,${t * 0.5})`;
-        ctx.lineWidth   = t * 2.5;
+        ctx.strokeStyle = `rgba(220,38,38,${t * 0.42})`;
+        ctx.lineWidth   = t * 2.2;
         ctx.lineCap     = 'round';
         ctx.stroke();
       }
     }
 
-    // Dim canvas when auth section enters view
+    // ── Dim canvas near auth section ─────────────────────────────
     if (canvasLayer) {
       const authEl = document.getElementById('auth-section');
       if (authEl) {
@@ -1085,8 +1120,7 @@ async function doResendOtp() {
     requestAnimationFrame(tick);
   }
 
-  // Start after page settles
-  setTimeout(() => { lastTime = performance.now(); requestAnimationFrame(tick); }, 400);
+  setTimeout(() => { lastTime = performance.now(); requestAnimationFrame(tick); }, 300);
 
 })();
 </script>
